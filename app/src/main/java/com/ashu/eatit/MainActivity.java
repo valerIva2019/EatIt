@@ -1,10 +1,12 @@
 package com.ashu.eatit;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.net.IpSecManager;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -16,6 +18,8 @@ import android.widget.Toast;
 
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.Model.UserModel;
+import com.firebase.ui.auth.AuthUI;
+import com.firebase.ui.auth.IdpResponse;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
@@ -26,6 +30,10 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import dmax.dialog.SpotsDialog;
 import io.reactivex.disposables.CompositeDisposable;
 
@@ -35,8 +43,9 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth firebaseAuth;
     private FirebaseAuth.AuthStateListener listener;
     private AlertDialog dialog;
-    private CompositeDisposable compositeDisposable;
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
     private DatabaseReference userRef;
+    private List<AuthUI.IdpConfig> providers;
 
     public static final String TAG = MainActivity.class.getSimpleName();
 
@@ -63,26 +72,44 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
+        providers = Arrays.asList(new AuthUI.IdpConfig.PhoneBuilder().build());
+
         userRef = FirebaseDatabase.getInstance().getReference(Common.USER_REFERENCES);
         firebaseAuth = FirebaseAuth.getInstance();
         dialog = new SpotsDialog.Builder().setCancelable(false).setContext(this).build();
-        listener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-                if (user != null) {
-                    //Already Login
-                    checkUserFromFirebase(user.getUid());
-                } else {
-
-                }
+        listener = firebaseAuth -> {
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user != null) {
+                //Already Login
+                checkUserFromFirebase(user);
+            } else {
+                phoneLogin();
             }
         };
     }
 
-    private void checkUserFromFirebase(String uid) {
+    private void phoneLogin() {
+        startActivityForResult(AuthUI.getInstance().
+                createSignInIntentBuilder().setAvailableProviders(providers).build(),
+                APP_REQUEST_CODE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == APP_REQUEST_CODE) {
+            IdpResponse response = IdpResponse.fromResultIntent(data);
+            if (requestCode == RESULT_OK) {
+                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            } else {
+                Toast.makeText(this, "Failed to sign in!", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void checkUserFromFirebase(FirebaseUser user) {
         dialog.show();
-        userRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
+        userRef.child(user.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
@@ -92,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
                     goToHomeACtivity(userModel);
 
                 } else {
-                    showRegisterDialog(uid);
+                    showRegisterDialog(user);
                 }
                 dialog.dismiss();
             }
@@ -105,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void showRegisterDialog(String uid) {
+    private void showRegisterDialog(FirebaseUser user) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Register");
         builder.setMessage("Please fill information");
@@ -115,13 +142,10 @@ public class MainActivity extends AppCompatActivity {
         EditText edt_address = (EditText) itemView.findViewById(R.id.edt_address);
         EditText edt_phone = (EditText) itemView.findViewById(R.id.edt_phone);
 
+        //set Data
+        edt_phone.setText(user.getPhoneNumber());
         builder.setView(itemView);
-        builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.dismiss();
-            }
-        });
+        builder.setNegativeButton("CANCEL", (dialogInterface, i) -> dialogInterface.dismiss());
         builder.setPositiveButton("REGISTER", (dialogInterface, i) -> {
             if (TextUtils.isEmpty(edt_name.getText().toString())) {
                 Toast.makeText(this, "Please enter your name", Toast.LENGTH_SHORT).show();
@@ -131,12 +155,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
             UserModel userModel= new UserModel();
-            userModel.setUid(uid);
+            userModel.setUid(user.getUid());
             userModel.setName(edt_name.getText().toString());
             userModel.setAddress(edt_address.getText().toString());
             userModel.setPhone(edt_phone.getText().toString());
 
-            userRef.child(uid).setValue(userModel)
+            userRef.child(user.getUid()).setValue(userModel)
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
                             dialogInterface.dismiss();

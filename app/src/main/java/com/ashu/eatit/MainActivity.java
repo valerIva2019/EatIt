@@ -82,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
             if (user != null) {
                 //Already Login
                 checkUserFromFirebase(user);
+
             } else {
                 phoneLogin();
             }
@@ -116,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
                     //already exists user
 
                     UserModel userModel = snapshot.getValue(UserModel.class);
-                    goToHomeACtivity(userModel);
+                    goToHomeActivity(userModel);
 
                 } else {
                     showRegisterDialog(user);
@@ -165,20 +166,23 @@ public class MainActivity extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             dialogInterface.dismiss();
                             Toast.makeText(MainActivity.this, "Registered", Toast.LENGTH_LONG).show();
-                            goToHomeACtivity(userModel);
+                            goToHomeActivity(userModel);
 
                         }
                     });
 
-            AlertDialog dialog = builder.create();
-            dialog.show();
+
         });
 
+        AlertDialog dialog = builder.create();
+        dialog.show();
 
     }
 
-    private void goToHomeACtivity(UserModel userModel) {
+    private void goToHomeActivity(UserModel userModel) {
         Common.currentUser = userModel;
+        startActivity(new Intent(MainActivity.this, HomeActivity.class));
+        finish();
 
     }
 }

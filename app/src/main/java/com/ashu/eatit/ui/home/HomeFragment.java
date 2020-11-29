@@ -1,9 +1,12 @@
 package com.ashu.eatit.ui.home;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
+import android.view.animation.LayoutAnimationController;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -29,10 +32,14 @@ public class HomeFragment extends Fragment {
     private HomeViewModel homeViewModel;
     Unbinder unbinder;
 
+    @SuppressLint("NonConstantResourceId")
     @BindView(R.id.recycler_popular)
     RecyclerView recycler_popular;
+    @SuppressLint("NonConstantResourceId")
     @BindView(R.id.viewpager)
     LoopingViewPager viewPager;
+
+    LayoutAnimationController layoutAnimationController;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -45,17 +52,20 @@ public class HomeFragment extends Fragment {
             //create adapter
             MyPopularCategoriesAdapter myPopularCategoriesAdapter = new MyPopularCategoriesAdapter(getContext(), popularCategoryModels);
             recycler_popular.setAdapter(myPopularCategoriesAdapter);
+            recycler_popular.setLayoutAnimation(layoutAnimationController);
         });
 
         homeViewModel.getBestDealList().observe(getViewLifecycleOwner(), bestDealModels -> {
             //create adapter
             MyBestDealsAdapter adapter = new MyBestDealsAdapter(getContext(), bestDealModels, true);
             viewPager.setAdapter(adapter);
+
         });
         return root;
     }
 
     private void init() {
+        layoutAnimationController = AnimationUtils.loadLayoutAnimation(getContext(), R.anim.layout_item_from_left);
         recycler_popular.setHasFixedSize(true);
         recycler_popular.setLayoutManager(new LinearLayoutManager(getContext(), RecyclerView.HORIZONTAL, false));
     }

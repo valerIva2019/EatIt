@@ -1,6 +1,7 @@
 package com.ashu.eatit.Common;
 
 import com.ashu.eatit.Model.CategoryModel;
+import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.Model.UserModel;
 
 public class Common {
@@ -13,4 +14,5 @@ public class Common {
     public static UserModel currentUser;
 
     public static CategoryModel categorySelected;
+    public static FoodModel selectedFood;
 }

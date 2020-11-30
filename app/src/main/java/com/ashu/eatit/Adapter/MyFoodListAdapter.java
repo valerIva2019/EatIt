@@ -13,10 +13,14 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.ashu.eatit.Callback.IRecyclerClickListener;
+import com.ashu.eatit.Common.Common;
+import com.ashu.eatit.EventBus.FoodItemClick;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.R;
 import com.bumptech.glide.Glide;
 
+import org.greenrobot.eventbus.EventBus;
 import org.w3c.dom.Text;
 
 import java.util.List;
@@ -49,6 +53,12 @@ public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.My
         .append(foodModelList.get(position).getPrice()));
         holder.txt_food_name.setText(new StringBuilder("")
         .append(foodModelList.get(position).getName()));
+
+        //event
+        holder.setListener((view, pos) -> {
+            Common.selectedFood = foodModelList.get(pos);
+            EventBus.getDefault().postSticky(new FoodItemClick(true, foodModelList.get(pos)));
+        });
     }
 
     @Override
@@ -56,7 +66,7 @@ public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.My
         return foodModelList.size();
     }
 
-    public class MyViewHolder extends RecyclerView.ViewHolder {
+    public class MyViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener  {
         private Unbinder unbinder;
         @SuppressLint("NonConstantResourceId")
         @BindView(R.id.txt_food_name)
@@ -74,9 +84,21 @@ public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.My
         @BindView(R.id.img_quick_cart)
         ImageView img_cart;
 
+        IRecyclerClickListener listener;
+
+        public void setListener(IRecyclerClickListener listener) {
+            this.listener = listener;
+        }
+
         public MyViewHolder(@NonNull View itemView) {
             super(itemView);
             unbinder = ButterKnife.bind(this, itemView);
+            itemView.setOnClickListener(this);
+        }
+
+        @Override
+        public void onClick(View view) {
+            listener.onItemClickListener(view, getAdapterPosition());
         }
     }
 }

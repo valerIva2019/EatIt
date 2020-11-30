@@ -31,6 +31,7 @@ import com.ashu.eatit.Model.CommentModel;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.Model.UserModel;
 import com.ashu.eatit.R;
+import com.ashu.eatit.ui.comments.CommentFragment;
 import com.bumptech.glide.Glide;
 import com.cepheuen.elegantnumberbutton.view.ElegantNumberButton;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -91,6 +92,13 @@ public class FoodDetailFragment extends Fragment {
         showDialogRating();
     }
 
+    @SuppressLint("NonConstantResourceId")
+    @OnClick(R.id.btnShowComment)
+    void onShowButtonClicked() {
+        CommentFragment commentFragment = CommentFragment.getInstance();
+        commentFragment.show(getActivity().getSupportFragmentManager(), "CommentFragment");
+    }
+
     private void showDialogRating() {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Rating Food");
@@ -111,7 +119,7 @@ public class FoodDetailFragment extends Fragment {
             commentModel.setRatingValue(ratingBar.getRating());
             Map<String , Object> serverTimeStamp = new HashMap<>();
             serverTimeStamp.put("timeStamp", ServerValue.TIMESTAMP);
-            commentModel.setCommentTimeStamp(serverTimeStamp);
+            commentModel.setServerTimeStamp(serverTimeStamp);
 
             foodDetailViewModel.setCommentModel(commentModel);
 

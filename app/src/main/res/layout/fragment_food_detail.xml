@@ -49,8 +49,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:backgroundTint="@android:color/white"
-        android:elevation="6dp"
         android:contentDescription="@null"
+        android:elevation="6dp"
         android:src="@drawable/ic_baseline_star_24"
         app:layout_anchor="@id/app_bar_layout"
         app:layout_anchorGravity="start|right|bottom"
@@ -108,9 +108,9 @@
                         <TextView
                             android:id="@+id/food_price"
                             android:layout_width="0dp"
-                            android:fontFamily="@font/brandon_medium"
                             android:layout_height="wrap_content"
                             android:layout_weight="9"
+                            android:fontFamily="@font/brandon_medium"
                             android:text="1000"
                             android:textColor="@color/colorPrimary"
                             android:textSize="18sp"
@@ -173,8 +173,8 @@
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardElevation="5dp"
                 android:padding="8dp"
+                app:cardElevation="5dp"
                 app:cardUseCompatPadding="true">
 
                 <LinearLayout
@@ -189,13 +189,62 @@
                         android:fontFamily="@font/brandon_medium"
                         android:text="Size"
                         android:textSize="22sp" />
-                    
+
                     <RadioGroup
                         android:id="@+id/radio_group_size"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:weightSum="3"/>
+                        android:weightSum="3" />
+
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardElevation="5dp"
+                app:cardUseCompatPadding="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/brandon_medium"
+                            android:text="Addon"
+                            android:textSize="22sp" />
+
+                        <ImageView
+                            android:id="@+id/img_add_addon"
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:layout_gravity="center_vertical"
+                            android:layout_marginStart="4dp"
+                            android:layout_marginTop="4dp"
+                            android:src="@drawable/ic_baseline_add_box_24"
+                            app:tint="@color/colorAccent" />
+
+
+
+
+                    </LinearLayout>
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chip_group_user_selected_addon"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
 
 
                 </LinearLayout>
@@ -210,7 +259,7 @@
                 android:layout_marginRight="8dp"
                 android:text="Show Comment"
                 android:textColor="@android:color/white"
-                app:cornerRadius="4dp"/>
+                app:cornerRadius="4dp" />
 
 
         </LinearLayout>

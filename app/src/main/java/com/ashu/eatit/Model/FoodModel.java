@@ -10,6 +10,10 @@ public class FoodModel {
     private Double ratingValue;
     private Long ratingCount;
 
+    //for cart
+    private List<AddonModel> userSelectedAddon;
+    private SizeModel userSelectedSize;
+
     public FoodModel() {
     }
 
@@ -91,5 +95,21 @@ public class FoodModel {
 
     public void setRatingCount(Long ratingCount) {
         this.ratingCount = ratingCount;
+    }
+
+    public List<AddonModel> getUserSelectedAddon() {
+        return userSelectedAddon;
+    }
+
+    public void setUserSelectedAddon(List<AddonModel> userSelectedAddon) {
+        this.userSelectedAddon = userSelectedAddon;
+    }
+
+    public SizeModel getUserSelectedSize() {
+        return userSelectedSize;
+    }
+
+    public void setUserSelectedSize(SizeModel userSelectedSize) {
+        this.userSelectedSize = userSelectedSize;
     }
 }

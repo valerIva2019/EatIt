@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.ashu.eatit.Callback.IRecyclerClickListener;
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.EventBus.FoodItemClick;
+import com.ashu.eatit.Model.CommentModel;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.R;
 import com.bumptech.glide.Glide;
@@ -57,6 +58,7 @@ public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.My
         //event
         holder.setListener((view, pos) -> {
             Common.selectedFood = foodModelList.get(pos);
+            Common.selectedFood.setKey(String.valueOf(pos));
             EventBus.getDefault().postSticky(new FoodItemClick(true, foodModelList.get(pos)));
         });
     }

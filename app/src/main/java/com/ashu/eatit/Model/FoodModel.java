@@ -3,10 +3,12 @@ package com.ashu.eatit.Model;
 import java.util.List;
 
 public class FoodModel {
-    private String name, image, id, description;
+    private String name, image, id, description, key;
     private Long price;
     private List<AddonModel> addon;
     private List<SizeModel> size;
+    private Double ratingValue;
+    private Long ratingCount;
 
     public FoodModel() {
     }
@@ -65,5 +67,29 @@ public class FoodModel {
 
     public void setSize(List<SizeModel> size) {
         this.size = size;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public Double getRatingValue() {
+        return ratingValue;
+    }
+
+    public void setRatingValue(Double ratingValue) {
+        this.ratingValue = ratingValue;
+    }
+
+    public Long getRatingCount() {
+        return ratingCount;
+    }
+
+    public void setRatingCount(Long ratingCount) {
+        this.ratingCount = ratingCount;
     }
 }

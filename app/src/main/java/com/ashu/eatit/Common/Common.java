@@ -1,5 +1,6 @@
 package com.ashu.eatit.Common;
 
+import com.ashu.eatit.Model.CategoryModel;
 import com.ashu.eatit.Model.UserModel;
 
 public class Common {
@@ -11,4 +12,5 @@ public class Common {
     public static final String CATEGORY_REF = "Category";
     public static UserModel currentUser;
 
+    public static CategoryModel categorySelected;
 }

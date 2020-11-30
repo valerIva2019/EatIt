@@ -28,7 +28,7 @@ public class CartItem {
     private String userPhone;
 
     @ColumnInfo(name = "foodExtraPrice")
-    private String foodExtraPrice;
+    private Double foodExtraPrice;
 
     @ColumnInfo(name = "foodAddon")
     private String foodAddon;
@@ -89,11 +89,11 @@ public class CartItem {
         this.userPhone = userPhone;
     }
 
-    public String getFoodExtraPrice() {
+    public Double getFoodExtraPrice() {
         return foodExtraPrice;
     }
 
-    public void setFoodExtraPrice(String foodExtraPrice) {
+    public void setFoodExtraPrice(Double foodExtraPrice) {
         this.foodExtraPrice = foodExtraPrice;
     }
 

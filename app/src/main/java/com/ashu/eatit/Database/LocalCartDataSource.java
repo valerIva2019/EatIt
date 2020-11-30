@@ -6,11 +6,11 @@ import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.reactivex.Single;
 
-public class LoadCartDataSource implements CartDataSource{
+public class LocalCartDataSource implements CartDataSource{
 
     private CartDAO cartDAO;
 
-    public LoadCartDataSource(CartDAO cartDAO) {
+    public LocalCartDataSource(CartDAO cartDAO) {
         this.cartDAO = cartDAO;
     }
 

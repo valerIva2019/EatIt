@@ -9,12 +9,18 @@ import android.view.ViewGroup;
 import android.view.animation.LayoutAnimationController;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.ashu.eatit.Callback.IRecyclerClickListener;
 import com.ashu.eatit.Common.Common;
+import com.ashu.eatit.Database.CartDataSource;
+import com.ashu.eatit.Database.CartDatabase;
+import com.ashu.eatit.Database.CartItem;
+import com.ashu.eatit.Database.LocalCartDataSource;
+import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.FoodItemClick;
 import com.ashu.eatit.Model.CommentModel;
 import com.ashu.eatit.Model.FoodModel;
@@ -25,19 +31,28 @@ import org.greenrobot.eventbus.EventBus;
 import org.w3c.dom.Text;
 
 import java.util.List;
+import java.util.Locale;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.Unbinder;
+import io.reactivex.Scheduler;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.schedulers.Schedulers;
 
 public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.MyViewHolder> {
 
     private Context context;
     private List<FoodModel> foodModelList;
+    private CompositeDisposable compositeDisposable;
+    private CartDataSource cartDataSource;
 
     public MyFoodListAdapter(Context context, List<FoodModel> foodModelList) {
         this.context = context;
         this.foodModelList = foodModelList;
+        this.compositeDisposable = new CompositeDisposable();
+        this.cartDataSource = new LocalCartDataSource(CartDatabase.getInstance(context).cartDAO());
     }
 
     @NonNull
@@ -60,6 +75,31 @@ public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.My
             Common.selectedFood = foodModelList.get(pos);
             Common.selectedFood.setKey(String.valueOf(pos));
             EventBus.getDefault().postSticky(new FoodItemClick(true, foodModelList.get(pos)));
+        });
+
+        holder.img_cart.setOnClickListener(view -> {
+            CartItem cartItem = new CartItem();
+            cartItem.setUid(Common.currentUser.getUid());
+            cartItem.setUserPhone(Common.currentUser.getPhone());
+
+            cartItem.setFoodId(foodModelList.get(position).getId());
+            cartItem.setFoodName(foodModelList.get(position).getName());
+            cartItem.setFoodImg(foodModelList.get(position).getImage());
+            cartItem.setFoodQuantity(1);
+            cartItem.setFoodPrice(Double.valueOf(String.valueOf(foodModelList.get(position).getPrice())));
+            cartItem.setFoodExtraPrice(0.0);
+            cartItem.setFoodAddon("Default");
+            cartItem.setFoodSize("Default");
+
+
+            compositeDisposable.add(cartDataSource.insertOrReplaceAll(cartItem)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(()-> {
+                        Toast.makeText(context, "Add to cart success", Toast.LENGTH_SHORT).show();
+                        //notify home activity to update counter in cart
+                        EventBus.getDefault().postSticky(new CounterCartEvent(true));
+                    }, throwable -> Toast.makeText(context, "CART ERROR" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
         });
     }
 

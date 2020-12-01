@@ -16,12 +16,21 @@ import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.Database.CartDataSource;
 import com.ashu.eatit.Database.CartDatabase;
 import com.ashu.eatit.Database.LocalCartDataSource;
+import com.ashu.eatit.EventBus.BestDealItemClick;
 import com.ashu.eatit.EventBus.CategoryClick;
 import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.FoodItemClick;
 import com.ashu.eatit.EventBus.HideFABCart;
+import com.ashu.eatit.EventBus.PopularCategoryClick;
+import com.ashu.eatit.Model.BestDealModel;
+import com.ashu.eatit.Model.CategoryModel;
+import com.ashu.eatit.Model.FoodModel;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -39,6 +48,7 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import dmax.dialog.SpotsDialog;
 import io.reactivex.Scheduler;
 import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
@@ -57,6 +67,8 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     @BindView(R.id.fab)
     CounterFab fab;
 
+    android.app.AlertDialog dialog;
+
 
     @Override
     protected void onResume() {
@@ -70,7 +82,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-
+        dialog = new SpotsDialog.Builder().setContext(this).setCancelable(false).build();
         ButterKnife.bind(this);
         cartDataSource = new LocalCartDataSource(CartDatabase.getInstance(this).cartDAO());
         countCartItem();
@@ -140,26 +152,19 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     private void signOut() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Signout")
-                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        Common.selectedFood = null;
-                        Common.categorySelected = null;
-                        Common.currentUser = null;
-                        FirebaseAuth.getInstance().signOut();
+                .setMessage("Do you really want to log out ?")
+                .setPositiveButton("OK", (dialogInterface, i) -> {
+                    Common.selectedFood = null;
+                    Common.categorySelected = null;
+                    Common.currentUser = null;
+                    FirebaseAuth.getInstance().signOut();
 
-                        Intent intent = new Intent(HomeActivity.this, MainActivity.class);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                        finish();
-                    }
+                    Intent intent = new Intent(HomeActivity.this, MainActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
                 })
-                .setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        dialogInterface.dismiss();
-                    }
-                });
+                .setNegativeButton("CANCEL", (dialogInterface, i) -> dialogInterface.dismiss());
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -206,6 +211,126 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     public void onHideFABEvent(HideFABCart event) {
         if (event.isHidden()) {
             fab.hide();
+        }
+        else
+            fab.show();
+    }
+
+    @Subscribe(sticky = true, threadMode =  ThreadMode.MAIN)
+    public void onPopularItemClick(PopularCategoryClick event) {
+        if (event.getPopularCategoryModel() != null) {
+            dialog.show();
+
+            FirebaseDatabase.getInstance().getReference("Category")
+                    .child(event.getPopularCategoryModel().getMenu_id())
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            if (snapshot.exists()) {
+                                Common.categorySelected = snapshot.getValue(CategoryModel.class);
+
+                                FirebaseDatabase.getInstance().getReference("Category")
+                                        .child(event.getPopularCategoryModel().getMenu_id())
+                                        .child("foods")
+                                        .orderByChild("id")
+                                        .equalTo(event.getPopularCategoryModel().getFood_id())
+                                        .limitToLast(1)
+                                        .addListenerForSingleValueEvent(new ValueEventListener() {
+                                            @Override
+                                            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                                if (snapshot.exists()) {
+                                                    for (DataSnapshot itemSnapshot: snapshot.getChildren()) {
+                                                        Common.selectedFood = itemSnapshot.getValue(FoodModel.class);
+                                                    }
+                                                    navController.navigate(R.id.nav_food_detail);
+
+                                                } else {
+                                                    Toast.makeText(HomeActivity.this, "Item doesn't exist", Toast.LENGTH_SHORT).show();
+                                                }
+                                                dialog.dismiss();
+
+                                            }
+
+                                            @Override
+                                            public void onCancelled(@NonNull DatabaseError error) {
+                                                dialog.dismiss();
+                                                Toast.makeText(HomeActivity.this, "" + error.getMessage() , Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+
+                            } else {
+                                dialog.dismiss();
+                                Toast.makeText(HomeActivity.this, "Item doesn't exist", Toast.LENGTH_SHORT).show();
+
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            dialog.dismiss();
+                            Toast.makeText(HomeActivity.this, "" + error.getMessage() , Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        }
+        else
+            fab.show();
+    }
+
+    @Subscribe(sticky = true, threadMode =  ThreadMode.MAIN)
+    public void onBestDealItemClick (BestDealItemClick event) {
+        if (event.getBestDealModel() != null) {
+            dialog.show();
+
+            FirebaseDatabase.getInstance().getReference("Category")
+                    .child(event.getBestDealModel().getMenu_id())
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            if (snapshot.exists()) {
+                                Common.categorySelected = snapshot.getValue(CategoryModel.class);
+
+                                FirebaseDatabase.getInstance().getReference("Category")
+                                        .child(event.getBestDealModel().getMenu_id())
+                                        .child("foods")
+                                        .orderByChild("id")
+                                        .equalTo(event.getBestDealModel().getFood_id())
+                                        .limitToLast(1)
+                                        .addListenerForSingleValueEvent(new ValueEventListener() {
+                                            @Override
+                                            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                                if (snapshot.exists()) {
+                                                    for (DataSnapshot itemSnapshot: snapshot.getChildren()) {
+                                                        Common.selectedFood = itemSnapshot.getValue(FoodModel.class);
+                                                    }
+                                                    navController.navigate(R.id.nav_food_detail);
+
+                                                } else {
+                                                    Toast.makeText(HomeActivity.this, "Item doesn't exist", Toast.LENGTH_SHORT).show();
+                                                }
+                                                dialog.dismiss();
+
+                                            }
+
+                                            @Override
+                                            public void onCancelled(@NonNull DatabaseError error) {
+                                                dialog.dismiss();
+                                                Toast.makeText(HomeActivity.this, "" + error.getMessage() , Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+
+                            } else {
+                                dialog.dismiss();
+                                Toast.makeText(HomeActivity.this, "Item doesn't exist", Toast.LENGTH_SHORT).show();
+
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            dialog.dismiss();
+                            Toast.makeText(HomeActivity.this, "" + error.getMessage() , Toast.LENGTH_SHORT).show();
+                        }
+                    });
         }
         else
             fab.show();

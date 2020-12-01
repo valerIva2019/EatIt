@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -29,6 +30,13 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.karumi.dexter.Dexter;
+import com.karumi.dexter.PermissionToken;
+import com.karumi.dexter.listener.PermissionDeniedResponse;
+import com.karumi.dexter.listener.PermissionGrantedResponse;
+import com.karumi.dexter.listener.PermissionRequest;
+import com.karumi.dexter.listener.single.BasePermissionListener;
+import com.karumi.dexter.listener.single.PermissionListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -77,16 +85,32 @@ public class MainActivity extends AppCompatActivity {
         userRef = FirebaseDatabase.getInstance().getReference(Common.USER_REFERENCES);
         firebaseAuth = FirebaseAuth.getInstance();
         dialog = new SpotsDialog.Builder().setCancelable(false).setContext(this).build();
-        listener = firebaseAuth -> {
-            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-            if (user != null) {
-                //Already Login
-                checkUserFromFirebase(user);
+        listener = firebaseAuth -> Dexter.withActivity(this)
+                .withPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                .withListener(new PermissionListener() {
+                    @Override
+                    public void onPermissionGranted(PermissionGrantedResponse permissionGrantedResponse) {
+                        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                        if (user != null) {
+                            //Already Login
+                            checkUserFromFirebase(user);
 
-            } else {
-                phoneLogin();
-            }
-        };
+                        } else {
+                            phoneLogin();
+                        }
+                    }
+
+                    @Override
+                    public void onPermissionDenied(PermissionDeniedResponse permissionDeniedResponse) {
+                        Toast.makeText(MainActivity.this, "You must enable permission to use this app", Toast.LENGTH_SHORT).show();
+
+                    }
+
+                    @Override
+                    public void onPermissionRationaleShouldBeShown(PermissionRequest permissionRequest, PermissionToken permissionToken) {
+
+                    }
+                }).check();
     }
 
     private void phoneLogin() {
@@ -139,9 +163,9 @@ public class MainActivity extends AppCompatActivity {
         builder.setMessage("Please fill information");
 
         View itemView = LayoutInflater.from(this).inflate(R.layout.layout_register, null);
-        EditText edt_name = (EditText) itemView.findViewById(R.id.edt_name);
-        EditText edt_address = (EditText) itemView.findViewById(R.id.edt_address);
-        EditText edt_phone = (EditText) itemView.findViewById(R.id.edt_phone);
+        EditText edt_name = itemView.findViewById(R.id.edt_name);
+        EditText edt_address = itemView.findViewById(R.id.edt_address);
+        EditText edt_phone = itemView.findViewById(R.id.edt_phone);
 
         //set Data
         edt_phone.setText(user.getPhoneNumber());

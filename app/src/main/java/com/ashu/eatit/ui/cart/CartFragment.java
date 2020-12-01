@@ -1,9 +1,13 @@
 package com.ashu.eatit.ui.cart;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Location;
 import android.os.Bundle;
+import android.os.Looper;
 import android.os.Parcelable;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -25,6 +29,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -44,6 +49,15 @@ import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.HideFABCart;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
 import com.ashu.eatit.R;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -71,6 +85,11 @@ public class CartFragment extends Fragment {
     private Parcelable recyclerViewState;
     private CartDataSource cartDataSource;
 
+    LocationRequest locationRequest;
+    LocationCallback locationCallback;
+    FusedLocationProviderClient fusedLocationProviderClient;
+    Location currentLocation;
+
     @SuppressLint("NonConstantResourceId")
     @BindView(R.id.recycler_cart)
     RecyclerView recycler_cart;
@@ -97,6 +116,9 @@ public class CartFragment extends Fragment {
         View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_place_order, null);
 
         EditText edt_address = view.findViewById(R.id.edt_address);
+        EditText edt_comment = view.findViewById(R.id.edt_comment);
+        TextView txt_address = view.findViewById(R.id.txt_address_detail);
+
         RadioButton rdi_home = view.findViewById(R.id.rdi_home_address);
         RadioButton rdi_other_address = view.findViewById(R.id.rdi_other_address);
         RadioButton rdi_ship_this_address = view.findViewById(R.id.rdi_ship_this_address);
@@ -108,17 +130,45 @@ public class CartFragment extends Fragment {
         rdi_home.setOnCheckedChangeListener((compoundButton, b) -> {
             if (b) {
                 edt_address.setText(Common.currentUser.getAddress());
+                txt_address.setVisibility(View.GONE);
+
             }
         });
         rdi_other_address.setOnCheckedChangeListener((compoundButton, b) -> {
             if (b) {
                 edt_address.setText("");
-                edt_address.setHint("Enter your address");
+                txt_address.setVisibility(View.GONE);
+
             }
         });
         rdi_ship_this_address.setOnCheckedChangeListener((compoundButton, b) -> {
             if (b) {
-                //todo
+                if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return;
+                }
+                fusedLocationProviderClient.getLastLocation()
+                        .addOnFailureListener(e -> {
+                            Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            txt_address.setVisibility(View.GONE);
+                        })
+                        .addOnCompleteListener(task -> {
+                            String coordinates = task.getResult().getLatitude() +
+                                    "/" +
+                                    task.getResult().getLongitude();
+
+                            edt_address.setText(coordinates);
+
+                            //implement late todo
+                            txt_address.setText("Implement late");
+                            txt_address.setVisibility(View.VISIBLE);
+                        });
 
             }
         });
@@ -149,7 +199,7 @@ public class CartFragment extends Fragment {
                 group_place_holder.setVisibility(View.GONE);
                 txt_empty_cart.setVisibility(View.VISIBLE);
             } else {
-                Log.e("TAG", "onChanged: here" );
+                Log.e("TAG", "onChanged: here");
                 recycler_cart.setVisibility(View.VISIBLE);
                 group_place_holder.setVisibility(View.VISIBLE);
                 txt_empty_cart.setVisibility(View.GONE);
@@ -160,7 +210,43 @@ public class CartFragment extends Fragment {
         });
         unbinder = ButterKnife.bind(this, root);
         initViews();
+        initLocation();
         return root;
+    }
+
+    private void initLocation() {
+        buildLocationRequest();
+        buildLocationCallback();
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(getContext());
+        if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
+    }
+
+    private void buildLocationCallback() {
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+                currentLocation = locationResult.getLastLocation();
+            }
+        };
+    }
+
+    private void buildLocationRequest() {
+        locationRequest = new LocationRequest();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                .setInterval(5000)
+                .setFastestInterval(3000)
+                .setSmallestDisplacement(10f);
     }
 
     private void initViews() {
@@ -181,34 +267,33 @@ public class CartFragment extends Fragment {
                         pos -> {
                             CartItem cartItem = myCartAdapter.getItemAtPosition(pos);
                             cartDataSource.deleteCartItem(cartItem)
-                            .subscribeOn(Schedulers.io())
-                            .observeOn(AndroidSchedulers.mainThread())
-                            .subscribe(new SingleObserver<Integer>() {
-                                @Override
-                                public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+                                    .subscribeOn(Schedulers.io())
+                                    .observeOn(AndroidSchedulers.mainThread())
+                                    .subscribe(new SingleObserver<Integer>() {
+                                        @Override
+                                        public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
 
-                                }
+                                        }
 
-                                @Override
-                                public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
-                                    myCartAdapter.notifyItemRemoved(pos);
-                                    sumAllItemsInCart();
-                                    EventBus.getDefault().postSticky(new CounterCartEvent(true)); //Update FAB
-                                    Toast.makeText(getContext(), "DELETE ITEM FROM CART", Toast.LENGTH_SHORT).show();
+                                        @Override
+                                        public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
+                                            myCartAdapter.notifyItemRemoved(pos);
+                                            sumAllItemsInCart();
+                                            EventBus.getDefault().postSticky(new CounterCartEvent(true)); //Update FAB
+                                            Toast.makeText(getContext(), "DELETE ITEM FROM CART", Toast.LENGTH_SHORT).show();
 
 
+                                        }
 
-                                }
-
-                                @Override
-                                public void onError(@io.reactivex.annotations.NonNull Throwable e) {
-                                    Toast.makeText(getContext(), "DELETE CART" + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                }
-                            });
-            }));
+                                        @Override
+                                        public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                                            Toast.makeText(getContext(), "DELETE CART" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                        }));
             }
         };
-        
+
         sumAllItemsInCart();
     }
 
@@ -294,8 +379,29 @@ public class CartFragment extends Fragment {
         if (EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().unregister(this);
         }
+
+        if (fusedLocationProviderClient != null) {
+            fusedLocationProviderClient.removeLocationUpdates(locationCallback);
+        }
         super.onStop();
 
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (fusedLocationProviderClient != null)
+            if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)

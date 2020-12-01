@@ -2,8 +2,10 @@ package com.ashu.eatit;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.Menu;
+import android.view.View;
 import android.widget.Toast;
 
 import com.andremion.counterfab.CounterFab;
@@ -14,6 +16,7 @@ import com.ashu.eatit.Database.LocalCartDataSource;
 import com.ashu.eatit.EventBus.CategoryClick;
 import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.FoodItemClick;
+import com.ashu.eatit.EventBus.HideFABCart;
 import com.google.android.material.navigation.NavigationView;
 
 import androidx.annotation.NonNull;
@@ -67,6 +70,8 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         cartDataSource = new LocalCartDataSource(CartDatabase.getInstance(this).cartDAO());
         countCartItem();
 
+        fab.setOnClickListener(view -> navController.navigate(R.id.nav_cart));
+
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         drawer = findViewById(R.id.drawer_layout);
@@ -74,7 +79,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
         mAppBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.nav_home, R.id.nav_menu, R.id.nav_food_list, R.id.nav_food_detail)
+                R.id.nav_home, R.id.nav_menu, R.id.nav_food_list, R.id.nav_food_detail, R.id.nav_cart)
                 .setDrawerLayout(drawer)
                 .build();
         navController = Navigation.findNavController(this, R.id.nav_host_fragment);
@@ -112,6 +117,9 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                 break;
             case R.id.nav_menu:
                 navController.navigate(R.id.nav_menu);
+                break;
+            case R.id.nav_cart:
+                navController.navigate(R.id.nav_cart);
                 break;
         }
         return true;
@@ -154,7 +162,17 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    @Subscribe(sticky = true, threadMode =  ThreadMode.MAIN)
+    public void onHideFABEvent(HideFABCart event) {
+        if (event.isHidden()) {
+            fab.hide();
+        }
+        else
+            fab.show();
+    }
+
     private void countCartItem() {
+        Log.d("TAG", "countCartItem: " + Common.currentUser.getUid());
         cartDataSource.countItemInCart(Common.currentUser.getUid())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())

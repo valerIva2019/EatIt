@@ -1,11 +1,14 @@
 package com.ashu.eatit.Common;
 
+import com.ashu.eatit.Model.AddonModel;
 import com.ashu.eatit.Model.CategoryModel;
 import com.ashu.eatit.Model.FoodModel;
+import com.ashu.eatit.Model.SizeModel;
 import com.ashu.eatit.Model.UserModel;
 
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.util.List;
 
 public class Common {
     public static final String USER_REFERENCES = "Users";
@@ -29,5 +32,29 @@ public class Common {
         }
         else
             return "0,00";
+    }
+
+    public static Double calculateExtraPrice(SizeModel userSelectedSize, List<AddonModel> userSelectedAddon) {
+        Double result = 0.0;
+        if (userSelectedSize == null && userSelectedAddon == null) {
+            return 0.0;
+        } else if(userSelectedSize == null)
+        {
+            for (AddonModel addonModel : userSelectedAddon) {
+                result += addonModel.getPrice();
+            }
+            return result;
+        }
+        else if (userSelectedAddon == null) {
+            return userSelectedSize.getPrice() * 1.0;
+
+        }
+        else {
+            result = userSelectedSize.getPrice() * 1.0;
+            for (AddonModel addonModel : userSelectedAddon) {
+                result += addonModel.getPrice();
+            }
+            return result;
+        }
     }
 }

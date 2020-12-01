@@ -1,10 +1,14 @@
 package com.ashu.eatit.ui.cart;
 
 import android.annotation.SuppressLint;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AnimationUtils;
@@ -26,10 +30,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.ashu.eatit.Adapter.MyCartAdapter;
 import com.ashu.eatit.Adapter.MyFoodListAdapter;
 import com.ashu.eatit.Common.Common;
+import com.ashu.eatit.Common.MySwiperHelper;
 import com.ashu.eatit.Database.CartDataSource;
 import com.ashu.eatit.Database.CartDatabase;
 import com.ashu.eatit.Database.CartItem;
 import com.ashu.eatit.Database.LocalCartDataSource;
+import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.HideFABCart;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
 import com.ashu.eatit.R;
@@ -76,6 +82,7 @@ public class CartFragment extends Fragment {
     TextView txt_empty_cart;
 
     private Unbinder unbinder;
+    private MyCartAdapter myCartAdapter;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -94,7 +101,7 @@ public class CartFragment extends Fragment {
                 group_place_holder.setVisibility(View.VISIBLE);
                 txt_empty_cart.setVisibility(View.GONE);
 
-                MyCartAdapter myCartAdapter = new MyCartAdapter(getContext(), cartItems);
+                myCartAdapter = new MyCartAdapter(getContext(), cartItems);
                 recycler_cart.setAdapter(myCartAdapter);
             }
         });
@@ -104,6 +111,8 @@ public class CartFragment extends Fragment {
     }
 
     private void initViews() {
+        setHasOptionsMenu(true);
+
         cartDataSource = new LocalCartDataSource(CartDatabase.getInstance(getContext()).cartDAO());
         EventBus.getDefault().postSticky(new HideFABCart(true));
 
@@ -112,7 +121,109 @@ public class CartFragment extends Fragment {
         recycler_cart.setLayoutManager(layoutManager);
         recycler_cart.addItemDecoration(new DividerItemDecoration(getContext(), layoutManager.getOrientation()));
 
+        MySwiperHelper mySwiperHelper = new MySwiperHelper(getContext(), recycler_cart, 200) {
+            @Override
+            public void instantiateMyButton(RecyclerView.ViewHolder viewHolder, List<MyButton> buf) {
+                buf.add(new MyButton(getContext(), "Delete", 30, 0, Color.parseColor("#FF3C30"),
+                        pos -> {
+                            CartItem cartItem = myCartAdapter.getItemAtPosition(pos);
+                            cartDataSource.deleteCartItem(cartItem)
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(new SingleObserver<Integer>() {
+                                @Override
+                                public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
 
+                                }
+
+                                @Override
+                                public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
+                                    myCartAdapter.notifyItemRemoved(pos);
+                                    sumAllItemsInCart();
+                                    EventBus.getDefault().postSticky(new CounterCartEvent(true)); //Update FAB
+                                    Toast.makeText(getContext(), "DELETE ITEM FROM CART", Toast.LENGTH_SHORT).show();
+
+
+
+                                }
+
+                                @Override
+                                public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                                    Toast.makeText(getContext(), "DELETE CART" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+            }));
+            }
+        };
+        
+        sumAllItemsInCart();
+    }
+
+    private void sumAllItemsInCart() {
+        cartDataSource.sumPriceInCart(Common.currentUser.getUid())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new SingleObserver<Double>() {
+                    @Override
+                    public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onSuccess(@io.reactivex.annotations.NonNull Double aDouble) {
+                        txt_total_price.setText(new StringBuilder().append(aDouble));
+                    }
+
+                    @Override
+                    public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                        if (!e.getMessage().contains("Query returned empty")) {
+                            Toast.makeText(getContext(), "SUM CART" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
+
+    @Override
+    public void onPrepareOptionsMenu(@NonNull Menu menu) {
+        menu.findItem(R.id.action_settings).setVisible(false); //hide home menu already inflate
+
+        super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.cart_menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_clear_cart) {
+            cartDataSource.cleanCart(Common.currentUser.getUid())
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new SingleObserver<Integer>() {
+                        @Override
+                        public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+
+                        }
+
+                        @Override
+                        public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
+                            Toast.makeText(getContext(), "CLEANED CART", Toast.LENGTH_SHORT).show();
+                            EventBus.getDefault().postSticky(new CounterCartEvent(true));
+
+                        }
+
+                        @Override
+                        public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                            Toast.makeText(getContext(), "CLEAN CART" + e.getMessage(), Toast.LENGTH_SHORT).show();
+
+                        }
+                    });
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override

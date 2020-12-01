@@ -63,6 +63,10 @@ public class MyCartAdapter extends RecyclerView.Adapter<MyCartAdapter.MyViewHold
         return cartItemList.size();
     }
 
+    public CartItem getItemAtPosition(int pos) {
+        return cartItemList.get(pos);
+    }
+
     public class MyViewHolder extends RecyclerView.ViewHolder{
         private Unbinder unbinder;
         @SuppressLint("NonConstantResourceId")

@@ -287,8 +287,8 @@ public class FoodDetailFragment extends Fragment implements TextWatcher {
 
         View itemView = LayoutInflater.from(getContext()).inflate(R.layout.layout_rating, null);
 
-        RatingBar ratingBar = (RatingBar)itemView.findViewById(R.id.rating_bar);
-        EditText edt_comment = (EditText) itemView.findViewById(R.id.edt_comment);
+        RatingBar ratingBar = itemView.findViewById(R.id.rating_bar);
+        EditText edt_comment =  itemView.findViewById(R.id.edt_comment);
 
         builder.setView(itemView);
         builder.setNegativeButton("CANCEL", (dialogInterface, i) -> dialogInterface.dismiss());
@@ -335,8 +335,8 @@ public class FoodDetailFragment extends Fragment implements TextWatcher {
 
         addOnBottomSheetDialog = new BottomSheetDialog(getContext(), R.style.DialogStyle);
         View layout_add_on_display = getLayoutInflater().inflate(R.layout.layout_addon_display, null);
-        chip_group_addon = (ChipGroup) layout_add_on_display.findViewById(R.id.chip_group_addon);
-        edt_search = (EditText) layout_add_on_display.findViewById(R.id.edt_search);
+        chip_group_addon =  layout_add_on_display.findViewById(R.id.chip_group_addon);
+        edt_search =  layout_add_on_display.findViewById(R.id.edt_search);
         addOnBottomSheetDialog.setContentView(layout_add_on_display);
 
         addOnBottomSheetDialog.setOnDismissListener(dialogInterface -> {
@@ -410,7 +410,7 @@ public class FoodDetailFragment extends Fragment implements TextWatcher {
                             double result = sumRating / ratingCount;
 
                             Map<String, Object> updateData = new HashMap<>();
-                            updateData.put("ratingValue", result);
+                            updateData.put("ratingValue", sumRating);
                             updateData.put("ratingCount", ratingCount);
 
                             //update data in variables
@@ -448,7 +448,7 @@ public class FoodDetailFragment extends Fragment implements TextWatcher {
         food_price.setText(new StringBuilder(foodModel.getPrice().toString()));
 
         if (foodModel.getRatingValue() != null)
-            ratingBar.setRating(foodModel.getRatingValue().floatValue());
+            ratingBar.setRating(foodModel.getRatingValue().floatValue() / foodModel.getRatingCount());
 
         ((AppCompatActivity) getActivity())
                 .getSupportActionBar()
@@ -494,7 +494,8 @@ public class FoodDetailFragment extends Fragment implements TextWatcher {
 
 
         //Size
-        totalPrice += Double.parseDouble(Common.selectedFood.getUserSelectedSize().getPrice().toString());
+        if (Common.selectedFood.getUserSelectedSize() != null)
+            totalPrice += Double.parseDouble(Common.selectedFood.getUserSelectedSize().getPrice().toString());
 
         displayPrice = totalPrice * (Integer.parseInt(numberButton.getNumber()));
         displayPrice = Math.round(displayPrice * 100.0 / 100.0);

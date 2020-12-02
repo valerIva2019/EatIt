@@ -3,6 +3,7 @@ package com.ashu.eatit;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -18,7 +19,10 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.ashu.eatit.Common.Common;
+import com.ashu.eatit.Model.BrainTreeToken;
 import com.ashu.eatit.Model.UserModel;
+import com.ashu.eatit.Remote.ICloudFunctions;
+import com.ashu.eatit.Remote.RetrofitICloudClient;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.IdpResponse;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -43,7 +47,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import dmax.dialog.SpotsDialog;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -54,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
     private CompositeDisposable compositeDisposable = new CompositeDisposable();
     private DatabaseReference userRef;
     private List<AuthUI.IdpConfig> providers;
+    private ICloudFunctions cloudFunctions;
 
     public static final String TAG = MainActivity.class.getSimpleName();
 
@@ -85,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
         userRef = FirebaseDatabase.getInstance().getReference(Common.USER_REFERENCES);
         firebaseAuth = FirebaseAuth.getInstance();
         dialog = new SpotsDialog.Builder().setCancelable(false).setContext(this).build();
+        cloudFunctions = RetrofitICloudClient.getInstance().create(ICloudFunctions.class);
         listener = firebaseAuth -> Dexter.withActivity(this)
                 .withPermission(Manifest.permission.ACCESS_FINE_LOCATION)
                 .withListener(new PermissionListener() {
@@ -140,13 +149,23 @@ public class MainActivity extends AppCompatActivity {
                 if (snapshot.exists()) {
                     //already exists user
 
-                    UserModel userModel = snapshot.getValue(UserModel.class);
-                    goToHomeActivity(userModel);
+                    compositeDisposable.add(cloudFunctions.getToken().subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(brainTreeToken -> {
+                                dialog.dismiss();
+                                UserModel userModel = snapshot.getValue(UserModel.class);
+                                goToHomeActivity(userModel, brainTreeToken.getToken());
+
+                            }, throwable -> {
+                                dialog.dismiss();
+                                Toast.makeText(MainActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                            }));
 
                 } else {
                     showRegisterDialog(user);
+                    dialog.dismiss();
+
                 }
-                dialog.dismiss();
             }
 
             @Override
@@ -188,9 +207,21 @@ public class MainActivity extends AppCompatActivity {
             userRef.child(user.getUid()).setValue(userModel)
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
-                            dialogInterface.dismiss();
-                            Toast.makeText(MainActivity.this, "Registered", Toast.LENGTH_LONG).show();
-                            goToHomeActivity(userModel);
+
+                            compositeDisposable.add(cloudFunctions.getToken().subscribeOn(Schedulers.io())
+                                    .observeOn(AndroidSchedulers.mainThread())
+                                    .subscribe(brainTreeToken -> {
+                                        dialogInterface.dismiss();
+                                        Toast.makeText(MainActivity.this, "Registered", Toast.LENGTH_LONG).show();
+                                        goToHomeActivity(userModel, brainTreeToken.getToken());
+
+
+                                    }, throwable -> {
+                                        dialog.dismiss();
+                                        Toast.makeText(MainActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                                    }));
+
+
 
                         }
                     });
@@ -203,10 +234,12 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void goToHomeActivity(UserModel userModel) {
+    private void goToHomeActivity(UserModel userModel, String token) {
         Common.currentUser = userModel;
+        Common.currentToken = token;
         startActivity(new Intent(MainActivity.this, HomeActivity.class));
         finish();
+
 
     }
 }

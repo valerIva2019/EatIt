@@ -33,6 +33,7 @@ public class Common {
 
     public static CategoryModel categorySelected;
     public static FoodModel selectedFood;
+    public static String currentToken = "";
 
     public static String formatPrice(double displayPrice) {
         if (displayPrice != 0) {

@@ -2,7 +2,9 @@ package com.ashu.eatit.ui.cart;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Address;
@@ -11,6 +13,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.Parcelable;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -28,6 +31,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
@@ -50,8 +54,15 @@ import com.ashu.eatit.Database.LocalCartDataSource;
 import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.HideFABCart;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
+import com.ashu.eatit.Model.BrainTreeTransaction;
 import com.ashu.eatit.Model.Order;
 import com.ashu.eatit.R;
+import com.ashu.eatit.Remote.ICloudFunctions;
+import com.ashu.eatit.Remote.RetrofitICloudClient;
+import com.braintreepayments.api.PaymentMethod;
+import com.braintreepayments.api.dropin.DropInRequest;
+import com.braintreepayments.api.dropin.DropInResult;
+import com.braintreepayments.api.models.PaymentMethodNonce;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -92,7 +103,10 @@ import io.reactivex.schedulers.Schedulers;
 
 public class CartFragment extends Fragment {
 
+    private static final int REQUEST_BRAINTREE_CODE = 7777;
     private CartViewModel cartViewModel;
+    String address, comment;
+    ICloudFunctions cloudFunctions;
 
     private Parcelable recyclerViewState;
     private CartDataSource cartDataSource;
@@ -208,6 +222,14 @@ public class CartFragment extends Fragment {
                     if (rdi_cod.isChecked()) {
                         paymentCOD(edt_address.getText().toString(), edt_comment.getText().toString());
 
+                    } else if (rdi_braintree.isChecked()) {
+                        address = edt_address.getText().toString();
+                        comment = edt_comment.getText().toString();
+
+                        if (!TextUtils.isEmpty(Common.currentToken)) {
+                            DropInRequest dropInRequest = new DropInRequest().clientToken(Common.currentToken);
+                            startActivityForResult(dropInRequest.getIntent(getContext()), REQUEST_BRAINTREE_CODE);
+                        }
                     }
                 });
 
@@ -284,6 +306,7 @@ public class CartFragment extends Fragment {
                     @Override
                     public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
                         Toast.makeText(getContext(), "Order Placed", Toast.LENGTH_SHORT).show();
+                        EventBus.getDefault().postSticky(new CounterCartEvent(true));
 
                     }
 
@@ -321,6 +344,9 @@ public class CartFragment extends Fragment {
         cartViewModel =
                 new ViewModelProvider(this).get(CartViewModel.class);
         View root = inflater.inflate(R.layout.fragment_cart, container, false);
+
+        cloudFunctions = RetrofitICloudClient.getInstance().create(ICloudFunctions.class);
+
         cartViewModel.initCartDataSource(getContext());
         cartViewModel.getMutableLiveDataCartList().observe(getViewLifecycleOwner(), cartItems -> {
             if (cartItems.isEmpty() || cartItems == null) {
@@ -582,5 +608,70 @@ public class CartFragment extends Fragment {
                         Toast.makeText(getContext(), "SUM CART" + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_BRAINTREE_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                DropInResult result = data.getParcelableExtra(DropInResult.EXTRA_DROP_IN_RESULT);
+                PaymentMethodNonce nonce = result.getPaymentMethodNonce();
+
+                cartDataSource.sumPriceInCart(Common.currentUser.getUid()).subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(new SingleObserver<Double>() {
+                            @Override
+                            public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+
+                            }
+
+                            @Override
+                            public void onSuccess(@io.reactivex.annotations.NonNull Double totalPrice) {
+                                compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid()).subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(cartItems -> compositeDisposable.add(cloudFunctions.submitPayment(totalPrice, nonce.getNonce())
+                                        .subscribeOn(Schedulers.io())
+                                        .observeOn(AndroidSchedulers.mainThread())
+                                        .subscribe(brainTreeTransaction -> {
+                                            if (brainTreeTransaction.isSuccess()) {
+                                                double finalPrice = totalPrice;
+                                                Order order = new Order();
+                                                order.setUserId(Common.currentUser.getUid());
+                                                order.setUserName(Common.currentUser.getName());
+                                                order.setUserPhone(Common.currentUser.getPhone());
+                                                order.setShippingAddress(address);
+                                                order.setComment(comment);
+
+                                                if (currentLocation != null) {
+                                                    order.setLat(currentLocation.getLatitude());
+                                                    order.setLng(currentLocation.getLongitude());
+
+                                                } else {
+                                                    order.setLng(-0.1f);
+                                                    order.setLat(-0.1f);
+                                                }
+
+                                                order.setCartItemList(cartItems);
+                                                order.setTotalPayment(totalPrice);
+                                                order.setDiscount(0); //implement discount functionality late todo
+                                                order.setFinalPayment(finalPrice);
+                                                order.setCod(false);
+                                                order.setTransactionId(brainTreeTransaction.getTransaction().getId());
+
+                                                writeOrderToFirebase(order);
+                                            }
+                                        }, throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show())
+                                        ), throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
+                            }
+
+                            @Override
+                            public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                                Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+
+                            }
+                        });
+            }
+        }
     }
 }

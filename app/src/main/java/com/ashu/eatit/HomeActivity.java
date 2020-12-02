@@ -208,6 +208,12 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     }
 
     @Subscribe(sticky = true, threadMode =  ThreadMode.MAIN)
+    public void countCartAgain(CounterCartEvent event) {
+        if (event.isSuccess())
+            countCartItem();
+    }
+
+    @Subscribe(sticky = true, threadMode =  ThreadMode.MAIN)
     public void onHideFABEvent(HideFABCart event) {
         if (event.isHidden()) {
             fab.hide();

@@ -364,7 +364,7 @@ public class FoodDetailFragment extends Fragment implements TextWatcher {
             }
 
         }
-        else if (Common.selectedFood.getUserSelectedAddon().size() == 0)
+        else
             chip_group_user_selected_addon.removeAllViews();
 
     }

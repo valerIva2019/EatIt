@@ -45,6 +45,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.ashu.eatit.Adapter.MyCartAdapter;
 import com.ashu.eatit.Adapter.MyFoodListAdapter;
+import com.ashu.eatit.Callback.ILoadTimeFromFirebaseListener;
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.Common.MySwiperHelper;
 import com.ashu.eatit.Database.CartDataSource;
@@ -72,7 +73,12 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.karumi.dexter.listener.single.DialogOnDeniedPermissionListener;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -83,8 +89,12 @@ import org.reactivestreams.Subscription;
 import org.w3c.dom.Text;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -101,7 +111,7 @@ import io.reactivex.observers.DisposableCompletableObserver;
 import io.reactivex.observers.DisposableSingleObserver;
 import io.reactivex.schedulers.Schedulers;
 
-public class CartFragment extends Fragment {
+public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListener {
 
     private static final int REQUEST_BRAINTREE_CODE = 7777;
     private CartViewModel cartViewModel;
@@ -115,6 +125,8 @@ public class CartFragment extends Fragment {
     LocationCallback locationCallback;
     FusedLocationProviderClient fusedLocationProviderClient;
     Location currentLocation;
+
+    ILoadTimeFromFirebaseListener listener;
 
     private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
@@ -278,7 +290,7 @@ public class CartFragment extends Fragment {
                                 order.setCod(true);
                                 order.setTransactionId("Cash On Delivery");
 
-                                writeOrderToFirebase(order);
+                                syncLocalTimeWithGlobalTime(order);
 
                             }
 
@@ -287,34 +299,55 @@ public class CartFragment extends Fragment {
                                 Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
                             }
                         }), throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
-}
+    }
+
+    private void syncLocalTimeWithGlobalTime(Order order) {
+        final DatabaseReference offsetRef = FirebaseDatabase.getInstance().getReference(".info/serverTimeOffset");
+        offsetRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                long offset = snapshot.getValue(Long.class);
+                long estimatedServerTimeMs = System.currentTimeMillis() + offset;
+                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm");
+                Date resultDate = new Date(estimatedServerTimeMs);
+                Log.d("TEST_DATE", ""+sdf.format(resultDate));
+
+                listener.onLoadTimeSuccess(order, estimatedServerTimeMs);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                listener.onLoadTimeFailed(error.getMessage());
+            }
+        });
+    }
 
     private void writeOrderToFirebase(Order order) {
         FirebaseDatabase.getInstance().getReference(Common.ORDER_REF)
                 .child(Common.createOrderNumber())
                 .setValue(order)
                 .addOnFailureListener(e -> Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show())
-        .addOnCompleteListener(task -> cartDataSource.cleanCart(Common.currentUser.getUid())
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new SingleObserver<Integer>() {
-                    @Override
-                    public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+                .addOnCompleteListener(task -> cartDataSource.cleanCart(Common.currentUser.getUid())
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(new SingleObserver<Integer>() {
+                            @Override
+                            public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
 
-                    }
+                            }
 
-                    @Override
-                    public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
-                        Toast.makeText(getContext(), "Order Placed", Toast.LENGTH_SHORT).show();
-                        EventBus.getDefault().postSticky(new CounterCartEvent(true));
+                            @Override
+                            public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
+                                Toast.makeText(getContext(), "Order Placed", Toast.LENGTH_SHORT).show();
+                                EventBus.getDefault().postSticky(new CounterCartEvent(true));
 
-                    }
+                            }
 
-                    @Override
-                    public void onError(@io.reactivex.annotations.NonNull Throwable e) {
-                        Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                }));
+                            @Override
+                            public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                                Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        }));
     }
 
     private String getAddressFromLatLnng(double latitude, double longitude) {
@@ -346,6 +379,7 @@ public class CartFragment extends Fragment {
         View root = inflater.inflate(R.layout.fragment_cart, container, false);
 
         cloudFunctions = RetrofitICloudClient.getInstance().create(ICloudFunctions.class);
+        listener = this;
 
         cartViewModel.initCartDataSource(getContext());
         cartViewModel.getMutableLiveDataCartList().observe(getViewLifecycleOwner(), cartItems -> {
@@ -629,49 +663,65 @@ public class CartFragment extends Fragment {
                             @Override
                             public void onSuccess(@io.reactivex.annotations.NonNull Double totalPrice) {
                                 compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid()).subscribeOn(Schedulers.io())
-                                .observeOn(AndroidSchedulers.mainThread())
-                                .subscribe(cartItems -> compositeDisposable.add(cloudFunctions.submitPayment(totalPrice, nonce.getNonce())
-                                        .subscribeOn(Schedulers.io())
                                         .observeOn(AndroidSchedulers.mainThread())
-                                        .subscribe(brainTreeTransaction -> {
-                                            if (brainTreeTransaction.isSuccess()) {
-                                                double finalPrice = totalPrice;
-                                                Order order = new Order();
-                                                order.setUserId(Common.currentUser.getUid());
-                                                order.setUserName(Common.currentUser.getName());
-                                                order.setUserPhone(Common.currentUser.getPhone());
-                                                order.setShippingAddress(address);
-                                                order.setComment(comment);
+                                        .subscribe(cartItems -> {
+                                            Map<String, String> headers = new HashMap<>();
+                                            headers.put("Authorization", Common.buildToken(Common.authorizeKey));
+                                            compositeDisposable.add(cloudFunctions.submitPayment(headers, totalPrice, nonce.getNonce())
+                                                    .subscribeOn(Schedulers.io())
+                                                    .observeOn(AndroidSchedulers.mainThread())
+                                                    .subscribe(brainTreeTransaction -> {
+                                                        if (brainTreeTransaction.isSuccess()) {
+                                                            double finalPrice = totalPrice;
+                                                            Order order = new Order();
+                                                            order.setUserId(Common.currentUser.getUid());
+                                                            order.setUserName(Common.currentUser.getName());
+                                                            order.setUserPhone(Common.currentUser.getPhone());
+                                                            order.setShippingAddress(address);
+                                                            order.setComment(comment);
 
-                                                if (currentLocation != null) {
-                                                    order.setLat(currentLocation.getLatitude());
-                                                    order.setLng(currentLocation.getLongitude());
+                                                            if (currentLocation != null) {
+                                                                order.setLat(currentLocation.getLatitude());
+                                                                order.setLng(currentLocation.getLongitude());
 
-                                                } else {
-                                                    order.setLng(-0.1f);
-                                                    order.setLat(-0.1f);
-                                                }
+                                                            } else {
+                                                                order.setLng(-0.1f);
+                                                                order.setLat(-0.1f);
+                                                            }
 
-                                                order.setCartItemList(cartItems);
-                                                order.setTotalPayment(totalPrice);
-                                                order.setDiscount(0); //implement discount functionality late todo
-                                                order.setFinalPayment(finalPrice);
-                                                order.setCod(false);
-                                                order.setTransactionId(brainTreeTransaction.getTransaction().getId());
+                                                            order.setCartItemList(cartItems);
+                                                            order.setTotalPayment(totalPrice);
+                                                            order.setDiscount(0); //implement discount functionality late todo
+                                                            order.setFinalPayment(finalPrice);
+                                                            order.setCod(false);
+                                                            order.setTransactionId(brainTreeTransaction.getTransaction().getId());
 
-                                                writeOrderToFirebase(order);
-                                            }
-                                        }, throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show())
-                                        ), throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
+                                                            //writeOrderToFirebase(order);
+                                                            syncLocalTimeWithGlobalTime(order);
+                                                        }
+
+                                                    }, throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
+                                        }, throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
                             }
 
                             @Override
                             public void onError(@io.reactivex.annotations.NonNull Throwable e) {
                                 Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
-
                             }
                         });
             }
         }
+    }
+
+    @Override
+    public void onLoadTimeSuccess(Order order, long estimateTimeInMs) {
+        order.setCreateDate(estimateTimeInMs);
+        writeOrderToFirebase(order);
+    }
+
+    @Override
+    public void onLoadTimeFailed(String message) {
+        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+
     }
 }

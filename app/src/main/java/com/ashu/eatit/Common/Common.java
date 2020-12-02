@@ -34,6 +34,7 @@ public class Common {
     public static CategoryModel categorySelected;
     public static FoodModel selectedFood;
     public static String currentToken = "";
+    public static String authorizeKey = "";
 
     public static String formatPrice(double displayPrice) {
         if (displayPrice != 0) {
@@ -83,5 +84,9 @@ public class Common {
     public static String createOrderNumber() {
         return String.valueOf(System.currentTimeMillis()) +
                 Math.abs(new Random().nextInt());
+    }
+
+    public static String buildToken(String authorizeKey) {
+        return "Bearer" + " " + authorizeKey;
     }
 }

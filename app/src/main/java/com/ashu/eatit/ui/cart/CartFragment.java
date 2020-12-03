@@ -37,7 +37,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -57,9 +56,13 @@ import com.ashu.eatit.EventBus.HideFABCart;
 import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
 import com.ashu.eatit.Model.BrainTreeTransaction;
+import com.ashu.eatit.Model.FCMResponse;
+import com.ashu.eatit.Model.FCMSendData;
 import com.ashu.eatit.Model.Order;
 import com.ashu.eatit.R;
 import com.ashu.eatit.Remote.ICloudFunctions;
+import com.ashu.eatit.Remote.IFCMService;
+import com.ashu.eatit.Remote.RetrofitFCMClient;
 import com.ashu.eatit.Remote.RetrofitICloudClient;
 import com.braintreepayments.api.PaymentMethod;
 import com.braintreepayments.api.dropin.DropInRequest;
@@ -101,6 +104,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.Unbinder;
+import io.reactivex.Observer;
 import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import io.reactivex.SingleObserver;
@@ -122,6 +126,8 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
     private Parcelable recyclerViewState;
     private CartDataSource cartDataSource;
+
+    IFCMService ifcmService;
 
     LocationRequest locationRequest;
     LocationCallback locationCallback;
@@ -298,7 +304,9 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                             @Override
                             public void onError(@io.reactivex.annotations.NonNull Throwable e) {
-                                Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                if (!e.getMessage().contains("Query returned empty result set")) {
+                                    Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
                             }
                         }), throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
     }
@@ -312,7 +320,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 long estimatedServerTimeMs = System.currentTimeMillis() + offset;
                 SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm");
                 Date resultDate = new Date(estimatedServerTimeMs);
-                Log.d("TEST_DATE", ""+sdf.format(resultDate));
+                Log.d("TEST_DATE", "" + sdf.format(resultDate));
 
                 listener.onLoadTimeSuccess(order, estimatedServerTimeMs);
             }
@@ -340,8 +348,24 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                             @Override
                             public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
-                                Toast.makeText(getContext(), "Order Placed", Toast.LENGTH_SHORT).show();
-                                EventBus.getDefault().postSticky(new CounterCartEvent(true));
+                                Map<String, String> notiData = new HashMap<>();
+                                notiData.put(Common.NOT1_TITLE, "New Order");
+                                notiData.put(Common.NOT1_CONTENT, "You have new order from " + Common.currentUser.getPhone());
+
+                                FCMSendData sendData = new FCMSendData(Common.createTopicOrder(), notiData);
+
+
+                                compositeDisposable.add(ifcmService.sendNotification(sendData)
+                                        .subscribeOn(Schedulers.io())
+                                        .observeOn(AndroidSchedulers.mainThread())
+                                        .subscribe(fcmResponse -> {
+                                            Toast.makeText(getContext(), "Order Placed", Toast.LENGTH_SHORT).show();
+                                            EventBus.getDefault().postSticky(new CounterCartEvent(true));
+                                        }, throwable -> {
+                                            Toast.makeText(getContext(), "Order was placed but failed to send notification", Toast.LENGTH_SHORT).show();
+                                            EventBus.getDefault().postSticky(new CounterCartEvent(true));
+                                        }));
+
 
                             }
 
@@ -380,6 +404,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 new ViewModelProvider(this).get(CartViewModel.class);
         View root = inflater.inflate(R.layout.fragment_cart, container, false);
 
+        ifcmService = RetrofitFCMClient.getInstance().create(IFCMService.class);
         cloudFunctions = RetrofitICloudClient.getInstance().create(ICloudFunctions.class);
         listener = this;
 
@@ -641,8 +666,9 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                     @Override
                     public void onError(@NonNull Throwable e) {
-                        Toast.makeText(getContext(), "SUM CART" + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
+                        if (!e.getMessage().contains("Query returned empty result set")) {
+                            Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }                    }
                 });
     }
 
@@ -708,7 +734,9 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                             @Override
                             public void onError(@io.reactivex.annotations.NonNull Throwable e) {
-                                Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                if (!e.getMessage().contains("Query returned empty result set")) {
+                                    Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
                             }
                         });
             }

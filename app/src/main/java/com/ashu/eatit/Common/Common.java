@@ -190,4 +190,8 @@ public class Common {
                 .setValue(new TokenModel(Common.currentUser.getPhone(), newToken))
                 .addOnFailureListener(e -> Toast.makeText(context, ""+e.getMessage(), Toast.LENGTH_SHORT).show());
     }
+
+    public static String createTopicOrder() {
+        return "/topics/new_order";
+    }
 }

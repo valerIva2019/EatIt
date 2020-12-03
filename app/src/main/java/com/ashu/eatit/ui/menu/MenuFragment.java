@@ -2,31 +2,39 @@ package com.ashu.eatit.ui.menu;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.SearchManager;
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
-import android.widget.TextView;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.ashu.eatit.Adapter.MyCategoriesAdapter;
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.Common.SpacesItemDecoration;
 import com.ashu.eatit.EventBus.MenuItemBack;
+import com.ashu.eatit.Model.CategoryModel;
 import com.ashu.eatit.R;
 
 import org.greenrobot.eventbus.EventBus;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -65,6 +73,9 @@ public class MenuFragment extends Fragment {
         return root;
     }
     private void initViews() {
+
+        setHasOptionsMenu(true);
+
         dialog = new SpotsDialog.Builder().setContext(getContext()).setCancelable(false).build();
         dialog.show();
         layoutAnimationController = AnimationUtils.loadLayoutAnimation(getContext(), R.anim.layout_item_from_left);
@@ -86,6 +97,59 @@ public class MenuFragment extends Fragment {
         recycler_menu.setLayoutManager(layoutManager);
         recycler_menu.addItemDecoration(new SpacesItemDecoration(8));
     }
+
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.search_menu, menu);
+        MenuItem menuItem = menu.findItem(R.id.action_search);
+
+        SearchManager searchManager = (SearchManager)getActivity().getSystemService(Context.SEARCH_SERVICE);
+        SearchView searchView = (SearchView)menuItem.getActionView();
+        searchView.setSearchableInfo(searchManager.getSearchableInfo(getActivity().getComponentName()));
+
+
+        //event
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String s) {
+                startSearch(s);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String s) {
+                return false;
+            }
+        });
+
+        //clear text when clear text is pressed
+        ImageView closeButton = (ImageView)searchView.findViewById(R.id.search_close_btn);
+        closeButton.setOnClickListener(view -> {
+            EditText ed = (EditText) searchView.findViewById(R.id.search_src_text);
+            //Clear Text
+            ed.setText("");
+            searchView.setQuery("", false);
+            searchView.onActionViewCollapsed();
+            menuItem.collapseActionView();
+
+            menuViewModel.loadCategories();
+        });
+    }
+
+    private void startSearch(String s) {
+        List<CategoryModel> resultList = new ArrayList<>();
+        for (int i = 0; i < adapter.getListCategory().size(); i++) {
+
+            CategoryModel categoryModel = adapter.getListCategory().get(i);
+            if (categoryModel.getName().toLowerCase().contains(s)) {
+                resultList.add(categoryModel);
+            }
+        }
+        menuViewModel.getCategoryListMutable().setValue(resultList);
+    }
+
+
     @Override
     public void onDestroy() {
         EventBus.getDefault().postSticky(new MenuItemBack());

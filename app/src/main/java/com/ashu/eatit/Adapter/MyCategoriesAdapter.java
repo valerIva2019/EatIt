@@ -3,6 +3,7 @@ package com.ashu.eatit.Adapter;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.media.Image;
+import android.media.MediaCodec;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,6 +24,7 @@ import com.bumptech.glide.Glide;
 import org.greenrobot.eventbus.EventBus;
 
 import java.util.List;
+import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -63,6 +65,11 @@ public class MyCategoriesAdapter extends RecyclerView.Adapter<MyCategoriesAdapte
     public int getItemCount() {
         return categoryModelList.size();
     }
+
+    public List<CategoryModel> getListCategory() {
+        return categoryModelList;
+    }
+
 
     public class MyViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         Unbinder unbinder;

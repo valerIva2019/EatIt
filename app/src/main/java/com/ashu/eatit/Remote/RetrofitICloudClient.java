@@ -18,7 +18,7 @@ public class RetrofitICloudClient {
 
         if (instance == null)
             instance = new Retrofit.Builder()
-                    .baseUrl("https://esportzgeeks.com") //todo
+                    .baseUrl("https://us-central1-eatit-7f146.cloudfunctions.net/widgets/") //todo
                     .addConverterFactory(GsonConverterFactory.create())
                     .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                     .build();

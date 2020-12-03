@@ -54,6 +54,7 @@ import com.ashu.eatit.Database.CartItem;
 import com.ashu.eatit.Database.LocalCartDataSource;
 import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.HideFABCart;
+import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
 import com.ashu.eatit.Model.BrainTreeTransaction;
 import com.ashu.eatit.Model.Order;
@@ -110,6 +111,7 @@ import io.reactivex.functions.Consumer;
 import io.reactivex.observers.DisposableCompletableObserver;
 import io.reactivex.observers.DisposableSingleObserver;
 import io.reactivex.schedulers.Schedulers;
+import retrofit2.internal.EverythingIsNonNull;
 
 public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListener {
 
@@ -724,5 +726,11 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     public void onLoadTimeFailed(String message) {
         Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
 
+    }
+
+    @Override
+    public void onDestroy() {
+        EventBus.getDefault().postSticky(new MenuItemBack());
+        super.onDestroy();
     }
 }

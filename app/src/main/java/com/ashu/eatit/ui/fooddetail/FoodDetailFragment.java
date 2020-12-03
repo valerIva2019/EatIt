@@ -39,6 +39,7 @@ import com.ashu.eatit.Database.CartDatabase;
 import com.ashu.eatit.Database.CartItem;
 import com.ashu.eatit.Database.LocalCartDataSource;
 import com.ashu.eatit.EventBus.CounterCartEvent;
+import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.MainActivity;
 import com.ashu.eatit.Model.AddonModel;
 import com.ashu.eatit.Model.CommentModel;
@@ -542,5 +543,10 @@ public class FoodDetailFragment extends Fragment implements TextWatcher {
         compositeDisposable.clear();
         super.onStop();
 
+    }
+    @Override
+    public void onDestroy() {
+        EventBus.getDefault().postSticky(new MenuItemBack());
+        super.onDestroy();
     }
 }

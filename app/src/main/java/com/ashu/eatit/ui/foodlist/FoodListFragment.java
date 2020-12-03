@@ -25,8 +25,11 @@ import com.ashu.eatit.Adapter.MyCategoriesAdapter;
 import com.ashu.eatit.Adapter.MyFoodListAdapter;
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.Common.SpacesItemDecoration;
+import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.R;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.util.List;
 
@@ -70,5 +73,10 @@ public class FoodListFragment extends Fragment {
         recycler_food_list.setHasFixedSize(true);
         recycler_food_list.setLayoutManager(new LinearLayoutManager(getContext()));
         layoutAnimationController = AnimationUtils.loadLayoutAnimation(getContext(), R.anim.layout_item_from_left);
+    }
+    @Override
+    public void onDestroy() {
+        EventBus.getDefault().postSticky(new MenuItemBack());
+        super.onDestroy();
     }
 }

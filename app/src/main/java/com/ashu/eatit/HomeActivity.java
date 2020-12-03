@@ -21,6 +21,7 @@ import com.ashu.eatit.EventBus.CategoryClick;
 import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.FoodItemClick;
 import com.ashu.eatit.EventBus.HideFABCart;
+import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.EventBus.PopularCategoryClick;
 import com.ashu.eatit.Model.BestDealModel;
 import com.ashu.eatit.Model.CategoryModel;
@@ -62,6 +63,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     private NavController navController;
 
     private CartDataSource cartDataSource;
+    int menuClickId = -1;
 
     @SuppressLint("NonConstantResourceId")
     @BindView(R.id.fab)
@@ -135,21 +137,26 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         drawer.closeDrawers();
         switch (item.getItemId()) {
             case R.id.nav_home:
-                navController.navigate(R.id.nav_home);
+                if (item.getItemId() != menuClickId)
+                    navController.navigate(R.id.nav_home);
                 break;
             case R.id.nav_menu:
-                navController.navigate(R.id.nav_menu);
+                if (item.getItemId() != menuClickId)
+                    navController.navigate(R.id.nav_menu);
                 break;
             case R.id.nav_cart:
-                navController.navigate(R.id.nav_cart);
+                if (item.getItemId() != menuClickId)
+                    navController.navigate(R.id.nav_cart);
                 break;
             case R.id.nav_view_orders:
-                navController.navigate(R.id.nav_view_orders);
+                if (item.getItemId() != menuClickId)
+                    navController.navigate(R.id.nav_view_orders);
                 break;
             case R.id.nav_sign_out:
-               signOut();
+                signOut();
                 break;
         }
+        menuClickId = item.getItemId();
         return true;
     }
 
@@ -380,5 +387,12 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
                     }
                 });
+    }
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    public void onMenuItemBack(MenuItemBack event) {
+        menuClickId = -1;
+        //navController.popBackStack(R.id.nav_home, true);
+        if (getSupportFragmentManager().getBackStackEntryCount() > 0)
+            getSupportFragmentManager().popBackStack();
     }
 }

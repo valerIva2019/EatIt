@@ -132,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void phoneLogin() {
         startActivityForResult(AuthUI.getInstance().
-                createSignInIntentBuilder().setAvailableProviders(providers).build(),
+                        createSignInIntentBuilder().setAvailableProviders(providers).build(),
                 APP_REQUEST_CODE);
     }
 
@@ -141,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == APP_REQUEST_CODE) {
             IdpResponse response = IdpResponse.fromResultIntent(data);
-            if (requestCode == RESULT_OK) {
+            if (resultCode == RESULT_OK) {
                 FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             } else {
                 Toast.makeText(this, "Failed to sign in!", Toast.LENGTH_SHORT).show();
@@ -158,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
                     //already exists user
                     FirebaseAuth.getInstance().getCurrentUser()
                             .getIdToken(true)
-                            .addOnFailureListener(e -> Toast.makeText(MainActivity.this, ""+e.getMessage(), Toast.LENGTH_LONG).show())
+                            .addOnFailureListener(e -> Toast.makeText(MainActivity.this, "" + e.getMessage(), Toast.LENGTH_LONG).show())
                             .addOnCompleteListener(tokenResultTask -> {
 
                                 Common.authorizeKey = tokenResultTask.getResult().getToken();
@@ -216,7 +216,7 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please enter your address", Toast.LENGTH_LONG).show();
             }
 
-            UserModel userModel= new UserModel();
+            UserModel userModel = new UserModel();
             userModel.setUid(user.getUid());
             userModel.setName(edt_name.getText().toString());
             userModel.setAddress(edt_address.getText().toString());
@@ -226,29 +226,29 @@ public class MainActivity extends AppCompatActivity {
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
 
-                           FirebaseAuth.getInstance().getCurrentUser()
-                                   .getIdToken(true)
-                                   .addOnFailureListener(e -> Toast.makeText(MainActivity.this, ""+e.getMessage(), Toast.LENGTH_LONG).show())
-                                   .addOnCompleteListener(tokenResultTask -> {
+                            FirebaseAuth.getInstance().getCurrentUser()
+                                    .getIdToken(true)
+                                    .addOnFailureListener(e -> Toast.makeText(MainActivity.this, "" + e.getMessage(), Toast.LENGTH_LONG).show())
+                                    .addOnCompleteListener(tokenResultTask -> {
 
-                                       Common.authorizeKey = tokenResultTask.getResult().getToken();
-                                       Map<String, String> headers = new HashMap<>();
-                                       headers.put("Authorization", Common.buildToken(Common.authorizeKey));
-                                       Common.authorizeKey = tokenResultTask.getResult().getToken();
-                                       compositeDisposable.add(cloudFunctions.getToken(headers).subscribeOn(Schedulers.io())
-                                               .observeOn(AndroidSchedulers.mainThread())
-                                               .subscribe(brainTreeToken -> {
-                                                   dialogInterface.dismiss();
-                                                   Toast.makeText(MainActivity.this, "Registered", Toast.LENGTH_LONG).show();
-                                                   goToHomeActivity(userModel, brainTreeToken.getToken());
+                                        Common.authorizeKey = tokenResultTask.getResult().getToken();
+                                        Map<String, String> headers = new HashMap<>();
+                                        headers.put("Authorization", Common.buildToken(Common.authorizeKey));
+                                        Common.authorizeKey = tokenResultTask.getResult().getToken();
+                                        compositeDisposable.add(cloudFunctions.getToken(headers).subscribeOn(Schedulers.io())
+                                                .observeOn(AndroidSchedulers.mainThread())
+                                                .subscribe(brainTreeToken -> {
+                                                    dialogInterface.dismiss();
+                                                    Toast.makeText(MainActivity.this, "Registered", Toast.LENGTH_LONG).show();
+                                                    goToHomeActivity(userModel, brainTreeToken.getToken());
 
 
-                                               }, throwable -> {
-                                                   dialog.dismiss();
-                                                   Toast.makeText(MainActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                                                }, throwable -> {
+                                                    dialog.dismiss();
+                                                    Toast.makeText(MainActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
 
-                                               }));
-                                   });
+                                                }));
+                                    });
 
                         }
                     });
@@ -273,13 +273,12 @@ public class MainActivity extends AppCompatActivity {
                     finish();
                 }).addOnCompleteListener(task -> {
 
-                    Common.currentUser = userModel;
-                    Common.currentToken = token;
-                    Common.updateToken(MainActivity.this, task.getResult().getToken());
-                    startActivity(new Intent(MainActivity.this, HomeActivity.class));
-                    finish();
-                });
-
+            Common.currentUser = userModel;
+            Common.currentToken = token;
+            Common.updateToken(MainActivity.this, task.getResult().getToken());
+            startActivity(new Intent(MainActivity.this, HomeActivity.class));
+            finish();
+        });
 
 
     }

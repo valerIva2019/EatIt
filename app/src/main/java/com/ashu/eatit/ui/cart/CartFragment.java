@@ -668,7 +668,8 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                     public void onError(@NonNull Throwable e) {
                         if (!e.getMessage().contains("Query returned empty result set")) {
                             Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }                    }
+                        }
+                    }
                 });
     }
 

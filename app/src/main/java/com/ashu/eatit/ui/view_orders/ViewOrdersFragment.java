@@ -104,6 +104,7 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
     RecyclerView recycler_orders;
 
     AlertDialog dialog;
+    public final static String TAG = "View Orders";
 
     private Unbinder unbinder;
     private ILoadOrderCallbackListener listener;
@@ -112,7 +113,7 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
                              ViewGroup container, Bundle savedInstanceState) {
         viewOrdersViewModel =
                 new ViewModelProvider(this).get(ViewOrdersViewModel.class);
-        View root = inflater.inflate(R.layout.fragment_cart, container, false);
+        View root = inflater.inflate(R.layout.fragment_view_orders, container, false);
         unbinder = ButterKnife.bind(this, root);
 
 
@@ -120,6 +121,7 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
         loadOrdersFromFirebase();
 
         viewOrdersViewModel.getMutableLiveDataOrderList().observe(getViewLifecycleOwner(), orderList -> {
+            Log.d(TAG, "onCreateView: o" + orderList.size());
             MyOrdersAdapter myOrdersAdapter = new MyOrdersAdapter(getContext(), orderList);
             recycler_orders.setAdapter(myOrdersAdapter);
         });
@@ -141,6 +143,7 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
                             order.setOrderNumber(orderSnapshot.getKey());
                             orderList.add(order);
                         }
+                        Log.d(TAG, "onCreateView: o" + orderList.size());
                         listener.onLoadOrderSuccess(orderList);
                     }
 
@@ -166,7 +169,7 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
 
     @Override
     public void onLoadOrderSuccess(List<Order> orderList) {
-
+        viewOrdersViewModel.setMutableLiveDataOrderList(orderList);
     }
 
     @Override

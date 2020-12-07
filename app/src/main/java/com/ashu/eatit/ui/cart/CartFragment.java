@@ -347,8 +347,8 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                             @Override
                             public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
                                 Map<String, String> notiData = new HashMap<>();
-                                notiData.put(Common.NOT1_TITLE, "New OrderModel");
-                                notiData.put(Common.NOT1_CONTENT, "You have new orderModel from " + Common.currentUser.getPhone());
+                                notiData.put(Common.NOT1_TITLE, "New Order");
+                                notiData.put(Common.NOT1_CONTENT, "You have new order from " + Common.currentUser.getPhone());
 
                                 FCMSendData sendData = new FCMSendData(Common.createTopicOrder(), notiData);
 
@@ -357,10 +357,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                                         .subscribeOn(Schedulers.io())
                                         .observeOn(AndroidSchedulers.mainThread())
                                         .subscribe(fcmResponse -> {
-                                            Toast.makeText(getContext(), "OrderModel Placed", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(getContext(), "Order Placed", Toast.LENGTH_SHORT).show();
                                             EventBus.getDefault().postSticky(new CounterCartEvent(true));
                                         }, throwable -> {
-                                            Toast.makeText(getContext(), "OrderModel was placed but failed to send notification", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(getContext(), "Order was placed but failed to send notification", Toast.LENGTH_SHORT).show();
                                             EventBus.getDefault().postSticky(new CounterCartEvent(true));
                                         }));
 

@@ -7,6 +7,12 @@
     android:background="@android:color/white"
     >
 
+    <fragment
+        android:id="@+id/places_autocomplete_fragment"
+        android:name="com.google.android.libraries.places.widget.AutocompleteSupportFragment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
 
 
     <com.google.android.material.textfield.TextInputLayout
@@ -15,8 +21,9 @@
         android:layout_height="wrap_content">
 
         <EditText
-            android:id="@+id/edt_address"
-            android:hint="Enter your address"
+            android:id="@+id/edt_comment"
+            android:hint="Enter comment"
+            android:background="@android:color/transparent"
             android:fontFamily="@font/brandon_medium"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
@@ -27,25 +34,10 @@
         android:text="Your Address"
         android:fontFamily="@font/brandon_medium"
         android:textSize="16sp"
-        android:visibility="gone"
         android:textStyle="bold"
         android:textColor="@android:color/black"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
-    <com.google.android.material.textfield.TextInputLayout
-        android:fontFamily="@font/brandon_medium"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <EditText
-            android:id="@+id/edt_comment"
-            android:hint="Enter your comment"
-            android:fontFamily="@font/brandon_medium"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-
-    </com.google.android.material.textfield.TextInputLayout>
-
     <TextView
         android:text="Delivery Method"
         android:fontFamily="@font/brandon_medium"

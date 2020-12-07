@@ -4,6 +4,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -17,6 +19,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.ashu.eatit.Common.Common;
@@ -26,10 +29,16 @@ import com.ashu.eatit.Remote.ICloudFunctions;
 import com.ashu.eatit.Remote.RetrofitICloudClient;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.IdpResponse;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.net.PlacesClient;
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
+import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
@@ -73,6 +82,10 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = MainActivity.class.getSimpleName();
 
+    private Place placeSelected;
+    AutocompleteSupportFragment places_fragment;
+    PlacesClient placesClient;
+    List<Place.Field> placeFields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
     @Override
     protected void onStart() {
         super.onStart();
@@ -96,6 +109,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
+        Places.initialize(this, getString(R.string.google_maps_key));
+        placesClient = Places.createClient(this);
+
         providers = Arrays.asList(new AuthUI.IdpConfig.PhoneBuilder().build());
 
         userRef = FirebaseDatabase.getInstance().getReference(Common.USER_REFERENCES);
@@ -201,62 +217,91 @@ public class MainActivity extends AppCompatActivity {
 
         View itemView = LayoutInflater.from(this).inflate(R.layout.layout_register, null);
         EditText edt_name = itemView.findViewById(R.id.edt_name);
-        EditText edt_address = itemView.findViewById(R.id.edt_address);
+        TextView txt_address_detail = itemView.findViewById(R.id.txt_address_detail);
         EditText edt_phone = itemView.findViewById(R.id.edt_phone);
+
+        places_fragment = (AutocompleteSupportFragment) getSupportFragmentManager().findFragmentById(R.id.places_autocomplete_fragment);
+        places_fragment.setPlaceFields(placeFields);
+        places_fragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
+            @Override
+            public void onPlaceSelected(@NonNull Place place) {
+                placeSelected = place;
+                txt_address_detail.setText(place.getAddress());
+
+
+            }
+
+            @Override
+            public void onError(@NonNull Status status) {
+                Log.d("PLACES API", "onError: " + status.getStatusMessage());
+                Toast.makeText(MainActivity.this, ""+status.getStatusMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
 
         //set Data
         edt_phone.setText(user.getPhoneNumber());
         builder.setView(itemView);
         builder.setNegativeButton("CANCEL", (dialogInterface, i) -> dialogInterface.dismiss());
         builder.setPositiveButton("REGISTER", (dialogInterface, i) -> {
-            if (TextUtils.isEmpty(edt_name.getText().toString())) {
-                Toast.makeText(this, "Please enter your name", Toast.LENGTH_SHORT).show();
-                return;
-            } else if (TextUtils.isEmpty(edt_address.getText().toString())) {
-                Toast.makeText(this, "Please enter your address", Toast.LENGTH_LONG).show();
+
+            if (placeSelected!= null) {
+
+                if (TextUtils.isEmpty(edt_name.getText().toString())) {
+                    Toast.makeText(this, "Please enter your name", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                UserModel userModel = new UserModel();
+                userModel.setUid(user.getUid());
+                userModel.setName(edt_name.getText().toString());
+                userModel.setAddress(txt_address_detail.getText().toString());
+                userModel.setPhone(edt_phone.getText().toString());
+                userModel.setLat(placeSelected.getLatLng().latitude);
+                userModel.setLng(placeSelected.getLatLng().longitude);
+
+                userRef.child(user.getUid()).setValue(userModel)
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+
+                                FirebaseAuth.getInstance().getCurrentUser()
+                                        .getIdToken(true)
+                                        .addOnFailureListener(e -> Toast.makeText(MainActivity.this, "" + e.getMessage(), Toast.LENGTH_LONG).show())
+                                        .addOnCompleteListener(tokenResultTask -> {
+
+                                            Common.authorizeKey = tokenResultTask.getResult().getToken();
+                                            Map<String, String> headers = new HashMap<>();
+                                            headers.put("Authorization", Common.buildToken(Common.authorizeKey));
+                                            Common.authorizeKey = tokenResultTask.getResult().getToken();
+                                            compositeDisposable.add(cloudFunctions.getToken(headers).subscribeOn(Schedulers.io())
+                                                    .observeOn(AndroidSchedulers.mainThread())
+                                                    .subscribe(brainTreeToken -> {
+                                                        dialogInterface.dismiss();
+                                                        Toast.makeText(MainActivity.this, "Registered", Toast.LENGTH_LONG).show();
+                                                        goToHomeActivity(userModel, brainTreeToken.getToken());
+
+
+                                                    }, throwable -> {
+                                                        dialog.dismiss();
+                                                        Toast.makeText(MainActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+
+                                                    }));
+                                        });
+
+                            }
+                        });
             }
-
-            UserModel userModel = new UserModel();
-            userModel.setUid(user.getUid());
-            userModel.setName(edt_name.getText().toString());
-            userModel.setAddress(edt_address.getText().toString());
-            userModel.setPhone(edt_phone.getText().toString());
-
-            userRef.child(user.getUid()).setValue(userModel)
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-
-                            FirebaseAuth.getInstance().getCurrentUser()
-                                    .getIdToken(true)
-                                    .addOnFailureListener(e -> Toast.makeText(MainActivity.this, "" + e.getMessage(), Toast.LENGTH_LONG).show())
-                                    .addOnCompleteListener(tokenResultTask -> {
-
-                                        Common.authorizeKey = tokenResultTask.getResult().getToken();
-                                        Map<String, String> headers = new HashMap<>();
-                                        headers.put("Authorization", Common.buildToken(Common.authorizeKey));
-                                        Common.authorizeKey = tokenResultTask.getResult().getToken();
-                                        compositeDisposable.add(cloudFunctions.getToken(headers).subscribeOn(Schedulers.io())
-                                                .observeOn(AndroidSchedulers.mainThread())
-                                                .subscribe(brainTreeToken -> {
-                                                    dialogInterface.dismiss();
-                                                    Toast.makeText(MainActivity.this, "Registered", Toast.LENGTH_LONG).show();
-                                                    goToHomeActivity(userModel, brainTreeToken.getToken());
-
-
-                                                }, throwable -> {
-                                                    dialog.dismiss();
-                                                    Toast.makeText(MainActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
-
-                                                }));
-                                    });
-
-                        }
-                    });
-
+            else {
+                Toast.makeText(this, "Please select a address", Toast.LENGTH_SHORT).show();
+            }
 
         });
 
         AlertDialog dialog = builder.create();
+        dialog.setOnDismissListener(dialogInterface -> {
+            FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+            fragmentTransaction.remove(places_fragment);
+            fragmentTransaction.commit();
+        });
         dialog.show();
 
     }

@@ -13,9 +13,24 @@
             android:id="@+id/edt_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
             android:hint="YOUR NAME"/>
 
     </com.google.android.material.textfield.TextInputLayout>
+    <fragment
+        android:id="@+id/places_autocomplete_fragment"
+        android:name="com.google.android.libraries.places.widget.AutocompleteSupportFragment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    <TextView
+        android:id="@+id/txt_address_detail"
+        android:text="Your Address"
+        android:fontFamily="@font/brandon_medium"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -32,6 +47,7 @@
         <EditText
             android:id="@+id/edt_phone"
             android:layout_width="match_parent"
+            android:background="@android:color/transparent"
             android:layout_height="wrap_content"
             android:focusable="false"/>
 

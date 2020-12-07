@@ -55,6 +55,7 @@ import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.HideFABCart;
 import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
+import com.ashu.eatit.HomeActivity;
 import com.ashu.eatit.Model.BrainTreeTransaction;
 import com.ashu.eatit.Model.FCMResponse;
 import com.ashu.eatit.Model.FCMSendData;
@@ -68,6 +69,7 @@ import com.braintreepayments.api.PaymentMethod;
 import com.braintreepayments.api.dropin.DropInRequest;
 import com.braintreepayments.api.dropin.DropInResult;
 import com.braintreepayments.api.models.PaymentMethodNonce;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -77,6 +79,11 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.net.PlacesClient;
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
+import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -94,6 +101,7 @@ import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -118,6 +126,11 @@ import io.reactivex.schedulers.Schedulers;
 import retrofit2.internal.EverythingIsNonNull;
 
 public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListener {
+
+    private Place placeSelected;
+    AutocompleteSupportFragment places_fragment;
+    PlacesClient placesClient;
+    List<Place.Field> placeFields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
 
     private static final int REQUEST_BRAINTREE_CODE = 7777;
     private CartViewModel cartViewModel;
@@ -163,7 +176,6 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
         View view = LayoutInflater.from(getContext()).inflate(R.layout.layout_place_order, null);
 
-        EditText edt_address = view.findViewById(R.id.edt_address);
         EditText edt_comment = view.findViewById(R.id.edt_comment);
         TextView txt_address = view.findViewById(R.id.txt_address_detail);
 
@@ -173,32 +185,42 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         RadioButton rdi_cod = view.findViewById(R.id.rdi_cod);
         RadioButton rdi_braintree = view.findViewById(R.id.rdi_braintree);
 
-        edt_address.setText(Common.currentUser.getAddress());
+        places_fragment = (AutocompleteSupportFragment) getActivity().getSupportFragmentManager().findFragmentById(R.id.places_autocomplete_fragment);
+        places_fragment.setPlaceFields(placeFields);
+        places_fragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
+            @Override
+            public void onPlaceSelected(@NonNull Place place) {
+                placeSelected = place;
+                txt_address.setText(place.getAddress());
 
+
+            }
+
+            @Override
+            public void onError(@NonNull Status status) {
+                Log.d("PLACES API", "onError: " + status.getStatusMessage());
+                Toast.makeText(getContext(), "" + status.getStatusMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        txt_address.setText(Common.currentUser.getAddress());
         rdi_home.setOnCheckedChangeListener((compoundButton, b) -> {
             if (b) {
-                edt_address.setText(Common.currentUser.getAddress());
-                txt_address.setVisibility(View.GONE);
+                txt_address.setText(Common.currentUser.getAddress());
+                txt_address.setVisibility(View.VISIBLE);
+                places_fragment.setHint(Common.currentUser.getAddress());
 
             }
         });
         rdi_other_address.setOnCheckedChangeListener((compoundButton, b) -> {
             if (b) {
-                edt_address.setText("");
-                txt_address.setVisibility(View.GONE);
+                txt_address.setVisibility(View.VISIBLE);
 
             }
         });
         rdi_ship_this_address.setOnCheckedChangeListener((compoundButton, b) -> {
             if (b) {
                 if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                    //                                          int[] grantResults)
-                    // to handle the case where the user grants the permission. See the documentation
-                    // for ActivityCompat#requestPermissions for more details.
                     return;
                 }
                 fusedLocationProviderClient.getLastLocation()
@@ -217,14 +239,14 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                             Disposable disposable = singleAddress.subscribeWith(new DisposableSingleObserver<String>() {
                                 @Override
                                 public void onSuccess(@io.reactivex.annotations.NonNull String s) {
-                                    edt_address.setText(coordinates);
                                     txt_address.setText(s);
                                     txt_address.setVisibility(View.VISIBLE);
+                                    places_fragment.setHint(s);
+
                                 }
 
                                 @Override
                                 public void onError(@io.reactivex.annotations.NonNull Throwable e) {
-                                    edt_address.setText(coordinates);
                                     txt_address.setText("" + e.getMessage());
                                     txt_address.setVisibility(View.VISIBLE);
                                 }
@@ -240,10 +262,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         builder.setNegativeButton("NO", (dialogInterface, i) -> dialogInterface.dismiss())
                 .setPositiveButton("YES", (dialogInterface, i) -> {
                     if (rdi_cod.isChecked()) {
-                        paymentCOD(edt_address.getText().toString(), edt_comment.getText().toString());
+                        paymentCOD(txt_address.getText().toString(), edt_comment.getText().toString());
 
                     } else if (rdi_braintree.isChecked()) {
-                        address = edt_address.getText().toString();
+                        address = txt_address.getText().toString();
                         comment = edt_comment.getText().toString();
 
                         if (!TextUtils.isEmpty(Common.currentToken)) {
@@ -435,13 +457,6 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         buildLocationCallback();
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(getContext());
         if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return;
         }
         fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
@@ -466,6 +481,9 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     }
 
     private void initViews() {
+
+        initPlacesClient();
+
         setHasOptionsMenu(true);
 
         cartDataSource = new LocalCartDataSource(CartDatabase.getInstance(getContext()).cartDAO());
@@ -511,6 +529,11 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         };
 
         sumAllItemsInCart();
+    }
+
+    private void initPlacesClient() {
+        Places.initialize(getContext(), getString(R.string.google_maps_key));
+        placesClient = Places.createClient(getContext());
     }
 
     private void sumAllItemsInCart() {
@@ -609,13 +632,6 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         super.onResume();
         if (fusedLocationProviderClient != null)
             if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
                 return;
             }
         fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());

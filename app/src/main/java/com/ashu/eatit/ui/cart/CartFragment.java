@@ -3,7 +3,6 @@ package com.ashu.eatit.ui.cart;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -21,11 +20,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.AnimationUtils;
-import android.view.animation.LayoutAnimationController;
-import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -33,7 +28,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
@@ -43,7 +37,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.ashu.eatit.Adapter.MyCartAdapter;
-import com.ashu.eatit.Adapter.MyFoodListAdapter;
 import com.ashu.eatit.Callback.ILoadTimeFromFirebaseListener;
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.Common.MySwiperHelper;
@@ -55,17 +48,13 @@ import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.HideFABCart;
 import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
-import com.ashu.eatit.HomeActivity;
-import com.ashu.eatit.Model.BrainTreeTransaction;
-import com.ashu.eatit.Model.FCMResponse;
 import com.ashu.eatit.Model.FCMSendData;
-import com.ashu.eatit.Model.Order;
+import com.ashu.eatit.Model.OrderModel;
 import com.ashu.eatit.R;
 import com.ashu.eatit.Remote.ICloudFunctions;
 import com.ashu.eatit.Remote.IFCMService;
 import com.ashu.eatit.Remote.RetrofitFCMClient;
 import com.ashu.eatit.Remote.RetrofitICloudClient;
-import com.braintreepayments.api.PaymentMethod;
 import com.braintreepayments.api.dropin.DropInRequest;
 import com.braintreepayments.api.dropin.DropInResult;
 import com.braintreepayments.api.models.PaymentMethodNonce;
@@ -75,10 +64,6 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.libraries.places.api.Places;
 import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.net.PlacesClient;
@@ -89,15 +74,11 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.karumi.dexter.listener.single.DialogOnDeniedPermissionListener;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.jetbrains.annotations.NotNull;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -112,18 +93,13 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.Unbinder;
-import io.reactivex.Observer;
-import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Consumer;
-import io.reactivex.observers.DisposableCompletableObserver;
 import io.reactivex.observers.DisposableSingleObserver;
 import io.reactivex.schedulers.Schedulers;
-import retrofit2.internal.EverythingIsNonNull;
 
 public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListener {
 
@@ -297,30 +273,30 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                             @Override
                             public void onSuccess(@io.reactivex.annotations.NonNull Double totalPrice) {
                                 double finalPrice = totalPrice;
-                                Order order = new Order();
-                                order.setUserId(Common.currentUser.getUid());
-                                order.setUserName(Common.currentUser.getName());
-                                order.setUserPhone(Common.currentUser.getPhone());
-                                order.setShippingAddress(address);
-                                order.setComment(comment);
+                                OrderModel orderModel = new OrderModel();
+                                orderModel.setUserId(Common.currentUser.getUid());
+                                orderModel.setUserName(Common.currentUser.getName());
+                                orderModel.setUserPhone(Common.currentUser.getPhone());
+                                orderModel.setShippingAddress(address);
+                                orderModel.setComment(comment);
 
                                 if (currentLocation != null) {
-                                    order.setLat(currentLocation.getLatitude());
-                                    order.setLng(currentLocation.getLongitude());
+                                    orderModel.setLat(currentLocation.getLatitude());
+                                    orderModel.setLng(currentLocation.getLongitude());
 
                                 } else {
-                                    order.setLng(-0.1f);
-                                    order.setLat(-0.1f);
+                                    orderModel.setLng(-0.1f);
+                                    orderModel.setLat(-0.1f);
                                 }
 
-                                order.setCartItemList(cartItems);
-                                order.setTotalPayment(totalPrice);
-                                order.setDiscount(0); //implement discount functionality late todo
-                                order.setFinalPayment(finalPrice);
-                                order.setCod(true);
-                                order.setTransactionId("Cash On Delivery");
+                                orderModel.setCartItemList(cartItems);
+                                orderModel.setTotalPayment(totalPrice);
+                                orderModel.setDiscount(0); //implement discount functionality late todo
+                                orderModel.setFinalPayment(finalPrice);
+                                orderModel.setCod(true);
+                                orderModel.setTransactionId("Cash On Delivery");
 
-                                syncLocalTimeWithGlobalTime(order);
+                                syncLocalTimeWithGlobalTime(orderModel);
 
                             }
 
@@ -333,7 +309,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                         }), throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
     }
 
-    private void syncLocalTimeWithGlobalTime(Order order) {
+    private void syncLocalTimeWithGlobalTime(OrderModel orderModel) {
         final DatabaseReference offsetRef = FirebaseDatabase.getInstance().getReference(".info/serverTimeOffset");
         offsetRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -344,7 +320,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 Date resultDate = new Date(estimatedServerTimeMs);
                 Log.d("TEST_DATE", "" + sdf.format(resultDate));
 
-                listener.onLoadTimeSuccess(order, estimatedServerTimeMs);
+                listener.onLoadTimeSuccess(orderModel, estimatedServerTimeMs);
             }
 
             @Override
@@ -354,10 +330,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         });
     }
 
-    private void writeOrderToFirebase(Order order) {
+    private void writeOrderToFirebase(OrderModel orderModel) {
         FirebaseDatabase.getInstance().getReference(Common.ORDER_REF)
                 .child(Common.createOrderNumber())
-                .setValue(order)
+                .setValue(orderModel)
                 .addOnFailureListener(e -> Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show())
                 .addOnCompleteListener(task -> cartDataSource.cleanCart(Common.currentUser.getUid())
                         .subscribeOn(Schedulers.io())
@@ -371,8 +347,8 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                             @Override
                             public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
                                 Map<String, String> notiData = new HashMap<>();
-                                notiData.put(Common.NOT1_TITLE, "New Order");
-                                notiData.put(Common.NOT1_CONTENT, "You have new order from " + Common.currentUser.getPhone());
+                                notiData.put(Common.NOT1_TITLE, "New OrderModel");
+                                notiData.put(Common.NOT1_CONTENT, "You have new orderModel from " + Common.currentUser.getPhone());
 
                                 FCMSendData sendData = new FCMSendData(Common.createTopicOrder(), notiData);
 
@@ -381,10 +357,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                                         .subscribeOn(Schedulers.io())
                                         .observeOn(AndroidSchedulers.mainThread())
                                         .subscribe(fcmResponse -> {
-                                            Toast.makeText(getContext(), "Order Placed", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(getContext(), "OrderModel Placed", Toast.LENGTH_SHORT).show();
                                             EventBus.getDefault().postSticky(new CounterCartEvent(true));
                                         }, throwable -> {
-                                            Toast.makeText(getContext(), "Order was placed but failed to send notification", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(getContext(), "OrderModel was placed but failed to send notification", Toast.LENGTH_SHORT).show();
                                             EventBus.getDefault().postSticky(new CounterCartEvent(true));
                                         }));
 
@@ -718,31 +694,31 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                                                     .subscribe(brainTreeTransaction -> {
                                                         if (brainTreeTransaction.isSuccess()) {
                                                             double finalPrice = totalPrice;
-                                                            Order order = new Order();
-                                                            order.setUserId(Common.currentUser.getUid());
-                                                            order.setUserName(Common.currentUser.getName());
-                                                            order.setUserPhone(Common.currentUser.getPhone());
-                                                            order.setShippingAddress(address);
-                                                            order.setComment(comment);
+                                                            OrderModel orderModel = new OrderModel();
+                                                            orderModel.setUserId(Common.currentUser.getUid());
+                                                            orderModel.setUserName(Common.currentUser.getName());
+                                                            orderModel.setUserPhone(Common.currentUser.getPhone());
+                                                            orderModel.setShippingAddress(address);
+                                                            orderModel.setComment(comment);
 
                                                             if (currentLocation != null) {
-                                                                order.setLat(currentLocation.getLatitude());
-                                                                order.setLng(currentLocation.getLongitude());
+                                                                orderModel.setLat(currentLocation.getLatitude());
+                                                                orderModel.setLng(currentLocation.getLongitude());
 
                                                             } else {
-                                                                order.setLng(-0.1f);
-                                                                order.setLat(-0.1f);
+                                                                orderModel.setLng(-0.1f);
+                                                                orderModel.setLat(-0.1f);
                                                             }
 
-                                                            order.setCartItemList(cartItems);
-                                                            order.setTotalPayment(totalPrice);
-                                                            order.setDiscount(0); //implement discount functionality late todo
-                                                            order.setFinalPayment(finalPrice);
-                                                            order.setCod(false);
-                                                            order.setTransactionId(brainTreeTransaction.getTransaction().getId());
+                                                            orderModel.setCartItemList(cartItems);
+                                                            orderModel.setTotalPayment(totalPrice);
+                                                            orderModel.setDiscount(0); //implement discount functionality late todo
+                                                            orderModel.setFinalPayment(finalPrice);
+                                                            orderModel.setCod(false);
+                                                            orderModel.setTransactionId(brainTreeTransaction.getTransaction().getId());
 
-                                                            //writeOrderToFirebase(order);
-                                                            syncLocalTimeWithGlobalTime(order);
+                                                            //writeOrderToFirebase(orderModel);
+                                                            syncLocalTimeWithGlobalTime(orderModel);
                                                         }
 
                                                     }, throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
@@ -761,10 +737,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     }
 
     @Override
-    public void onLoadTimeSuccess(Order order, long estimateTimeInMs) {
-        order.setCreateDate(estimateTimeInMs);
-        order.setOrderStatus(0);
-        writeOrderToFirebase(order);
+    public void onLoadTimeSuccess(OrderModel orderModel, long estimateTimeInMs) {
+        orderModel.setCreateDate(estimateTimeInMs);
+        orderModel.setOrderStatus(0);
+        writeOrderToFirebase(orderModel);
     }
 
     @Override

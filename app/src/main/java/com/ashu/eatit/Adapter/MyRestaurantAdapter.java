@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.ashu.eatit.Callback.IRecyclerClickListener;
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.EventBus.CategoryClick;
+import com.ashu.eatit.EventBus.MenuItemEvent;
 import com.ashu.eatit.Model.CategoryModel;
 import com.ashu.eatit.Model.RestaurantModel;
 import com.ashu.eatit.R;
@@ -53,8 +54,8 @@ public class MyRestaurantAdapter extends RecyclerView.Adapter<MyRestaurantAdapte
 
         //event
         holder.setListener((view, pos) -> {
-//            Common.categorySelected = categoryModelList.get(pos);
-//            EventBus.getDefault().postSticky(new CategoryClick(true, categoryModelList.get(pos)));
+            Common.restaurantSelected = restaurantModelList.get(pos);
+            EventBus.getDefault().postSticky(new MenuItemEvent(true, restaurantModelList.get(pos)));
         });
     }
 

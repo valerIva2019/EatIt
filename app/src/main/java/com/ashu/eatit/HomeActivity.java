@@ -25,6 +25,7 @@ import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.FoodItemClick;
 import com.ashu.eatit.EventBus.HideFABCart;
 import com.ashu.eatit.EventBus.MenuItemBack;
+import com.ashu.eatit.EventBus.MenuItemEvent;
 import com.ashu.eatit.EventBus.PopularCategoryClick;
 import com.ashu.eatit.Model.BestDealModel;
 import com.ashu.eatit.Model.CategoryModel;
@@ -167,6 +168,10 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         item.setChecked(true);
         drawer.closeDrawers();
         switch (item.getItemId()) {
+            case R.id.nav_restaurant:
+                if (item.getItemId() != menuClickId)
+                    navController.navigate(R.id.nav_restaurant);
+                break;
             case R.id.nav_home:
                 if (item.getItemId() != menuClickId)
                     navController.navigate(R.id.nav_home);
@@ -507,5 +512,15 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         //navController.popBackStack(R.id.nav_home, true);
         if (getSupportFragmentManager().getBackStackEntryCount() > 0)
             getSupportFragmentManager().popBackStack();
+    }
+
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    public void onRestaurantClick(MenuItemEvent event) {
+        Bundle bundle = new Bundle();
+        bundle.putString("restaurant", event.getRestaurantModel().getUid());
+        navController.navigate(R.id.nav_home, bundle);
+        navigationView.getMenu().clear();
+        navigationView.inflateMenu(R.menu.restaurant_detail_menu);
     }
 }

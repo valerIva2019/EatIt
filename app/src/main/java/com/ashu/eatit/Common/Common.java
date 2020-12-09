@@ -24,6 +24,7 @@ import androidx.core.app.NotificationCompat;
 import com.ashu.eatit.Model.AddonModel;
 import com.ashu.eatit.Model.CategoryModel;
 import com.ashu.eatit.Model.FoodModel;
+import com.ashu.eatit.Model.RestaurantModel;
 import com.ashu.eatit.Model.SizeModel;
 import com.ashu.eatit.Model.TokenModel;
 import com.ashu.eatit.Model.UserModel;
@@ -60,6 +61,7 @@ public class Common {
     public static FoodModel selectedFood;
     public static String currentToken = "";
     public static String authorizeKey = "";
+    public static RestaurantModel restaurantSelected;
 
     public static String formatPrice(double displayPrice) {
         if (displayPrice != 0) {

@@ -47,15 +47,18 @@ public class HomeFragment extends Fragment {
                 new ViewModelProvider(this).get(HomeViewModel.class);
         View root = inflater.inflate(R.layout.fragment_home, container, false);
         unbinder = ButterKnife.bind(this, root);
+
+        String key = getArguments().getString("restaurant");
+
         init();
-        homeViewModel.getPopularList().observe(getViewLifecycleOwner(), popularCategoryModels -> {
+        homeViewModel.getPopularList(key).observe(getViewLifecycleOwner(), popularCategoryModels -> {
             //create adapter
             MyPopularCategoriesAdapter myPopularCategoriesAdapter = new MyPopularCategoriesAdapter(getContext(), popularCategoryModels);
             recycler_popular.setAdapter(myPopularCategoriesAdapter);
             recycler_popular.setLayoutAnimation(layoutAnimationController);
         });
 
-        homeViewModel.getBestDealList().observe(getViewLifecycleOwner(), bestDealModels -> {
+        homeViewModel.getBestDealList(key).observe(getViewLifecycleOwner(), bestDealModels -> {
             //create adapter
             MyBestDealsAdapter adapter = new MyBestDealsAdapter(getContext(), bestDealModels, true);
             viewPager.setAdapter(adapter);

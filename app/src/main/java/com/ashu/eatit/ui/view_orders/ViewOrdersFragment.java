@@ -233,6 +233,7 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
                                         public void onDataChange(@NonNull DataSnapshot snapshot) {
                                             if (snapshot.exists()) {
                                                 Common.currentShippingOrder = snapshot.getValue(ShippingOrderModel.class);
+                                                Common.currentShippingOrder.setKey(snapshot.getKey());
                                                 if (Common.currentShippingOrder.getCurrentLat() != -1 &&
                                                         Common.currentShippingOrder.getCurrentLng() != -1) {
                                                     startActivity(new Intent(getContext(), TrackingOrderActivity.class));

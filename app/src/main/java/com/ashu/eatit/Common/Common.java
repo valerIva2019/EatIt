@@ -239,4 +239,21 @@ public class Common {
         }
         return poly;
     }
+    public static float getBearing(LatLng begin, LatLng end) {
+        double lat = Math.abs(begin.latitude-end.latitude);
+        double lng = Math.abs(begin.longitude - end.longitude);
+
+        if (begin.latitude < end.latitude && begin.longitude < end.longitude)
+            return (float) Math.toDegrees(Math.atan(lng / lat));
+        else {
+            double v = 90 - Math.toDegrees(Math.atan(lng / lat));
+            if (begin.latitude >= end.latitude && begin.longitude < end.longitude)
+                return (float) (v + 90);
+            else  if (begin.latitude >= end.latitude && begin.longitude >= end.longitude)
+                return (float) (Math.toDegrees(Math.atan(lng / lat)) + 180);
+            else  if (begin.latitude < end.latitude && begin.longitude >= end.longitude)
+                return (float) (v + 270);
+        }
+        return -1;
+    }
 }

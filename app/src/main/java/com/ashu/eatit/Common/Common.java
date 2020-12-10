@@ -25,11 +25,13 @@ import com.ashu.eatit.Model.AddonModel;
 import com.ashu.eatit.Model.CategoryModel;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.Model.RestaurantModel;
+import com.ashu.eatit.Model.ShippingOrderModel;
 import com.ashu.eatit.Model.SizeModel;
 import com.ashu.eatit.Model.TokenModel;
 import com.ashu.eatit.Model.UserModel;
 import com.ashu.eatit.R;
 import com.ashu.eatit.services.MyFCMServices;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
@@ -37,6 +39,7 @@ import com.google.firebase.database.FirebaseDatabase;
 
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -53,6 +56,7 @@ public class Common {
     public static final String NOT1_CONTENT = "content";
     public static final String REQUEST_REFUND_MODEL = "RequestRefund";
     public static final String RESTAURANT_REF = "Restaurant";
+    public static final String SHIPPING_ORDER_REF = "ShippingOrder";
     private static final String TOKEN_REF = "Tokens";
 
     public static UserModel currentUser;
@@ -62,6 +66,7 @@ public class Common {
     public static String currentToken = "";
     public static String authorizeKey = "";
     public static RestaurantModel restaurantSelected;
+    public static ShippingOrderModel currentShippingOrder;
 
     public static String formatPrice(double displayPrice) {
         if (displayPrice != 0) {
@@ -188,14 +193,50 @@ public class Common {
     }
 
     public static void updateToken(Context context, String newToken) {
-        FirebaseDatabase.getInstance().
-                getReference(Common.TOKEN_REF)
-                .child(Common.currentUser.getUid())
-                .setValue(new TokenModel(Common.currentUser.getPhone(), newToken))
-                .addOnFailureListener(e -> Toast.makeText(context, ""+e.getMessage(), Toast.LENGTH_SHORT).show());
+      if (Common.currentUser != null) {
+          FirebaseDatabase.getInstance().
+                  getReference(Common.TOKEN_REF)
+                  .child(Common.currentUser.getUid())
+                  .setValue(new TokenModel(Common.currentUser.getPhone(), newToken))
+                  .addOnFailureListener(e -> Toast.makeText(context, ""+e.getMessage(), Toast.LENGTH_SHORT).show());
+      }
     }
 
     public static String createTopicOrder() {
         return "/topics/new_order";
+    }
+
+
+    public static List<LatLng> decodePoly (String encoded) {
+        List poly = new ArrayList();
+        int index = 0, len = encoded.length();
+        int lat =0, lng = 0;
+        while (index < len) {
+            int b, shift =0, result =0;
+            do {
+                b = encoded.charAt(index++)-63;
+                result |= (b & 0xff) << shift;
+                shift+=5;
+            } while (b >= 0x20);
+
+            int dLat = ((result & 1) != 0 ? ~ (result >> 1):(result >> 1));
+            lat+=dLat;
+
+            shift =0;
+            result = 0;
+            do {
+                b = encoded.charAt(index++)-63;
+                result |= (b & 0xff) << shift;
+                shift+=5;
+            } while (b >= 0x20);
+
+
+            int dLng = ((result & 1) != 0 ? ~ (result >> 1):(result >> 1));
+            lng+=dLng;
+
+            LatLng p = new LatLng((((double) lat/1E5)), (((double)lng/1E5)));
+            poly.add(p);
+        }
+        return poly;
     }
 }

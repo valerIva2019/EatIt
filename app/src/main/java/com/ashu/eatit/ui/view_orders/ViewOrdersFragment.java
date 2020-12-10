@@ -3,6 +3,7 @@ package com.ashu.eatit.ui.view_orders;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
@@ -33,7 +34,9 @@ import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.MainActivity;
 import com.ashu.eatit.Model.OrderModel;
 import com.ashu.eatit.Model.RefundRequestModel;
+import com.ashu.eatit.Model.ShippingOrderModel;
 import com.ashu.eatit.R;
+import com.ashu.eatit.TrackingOrderActivity;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.DataSnapshot;
@@ -219,6 +222,33 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
                             } else {
                                 Toast.makeText(getContext(), "The order can't be cancelled now", Toast.LENGTH_SHORT).show();
                             }
+                        }));
+                buf.add(new MyButton(getContext(), "Tracking Order", 30, 0, Color.parseColor("#001970"),
+                        pos -> {
+                            OrderModel orderModel = ((MyOrdersAdapter)recycler_orders.getAdapter()).getItemAtPosition(pos);
+                            FirebaseDatabase.getInstance().getReference(Common.SHIPPING_ORDER_REF)
+                                    .child(orderModel.getOrderNumber())
+                                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                                        @Override
+                                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                            if (snapshot.exists()) {
+                                                Common.currentShippingOrder = snapshot.getValue(ShippingOrderModel.class);
+                                                if (Common.currentShippingOrder.getCurrentLat() != -1 &&
+                                                        Common.currentShippingOrder.getCurrentLng() != -1) {
+                                                    startActivity(new Intent(getContext(), TrackingOrderActivity.class));
+                                                } else {
+                                                    Toast.makeText(getContext(), "The shipper has not yet started the order", Toast.LENGTH_SHORT).show();
+                                                }
+                                            } else {
+                                                Toast.makeText(getContext(), "The order is not yet accepted by the restaurant", Toast.LENGTH_SHORT).show();
+                                            }
+                                        }
+
+                                        @Override
+                                        public void onCancelled(@NonNull DatabaseError error) {
+                                            Toast.makeText(getContext(), ""+error.getMessage(), Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
                         }));
             }
         };

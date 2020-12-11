@@ -239,6 +239,7 @@ public class Common {
         }
         return poly;
     }
+
     public static float getBearing(LatLng begin, LatLng end) {
         double lat = Math.abs(begin.latitude-end.latitude);
         double lng = Math.abs(begin.longitude - end.longitude);

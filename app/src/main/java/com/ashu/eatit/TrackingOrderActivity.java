@@ -126,11 +126,10 @@ public class TrackingOrderActivity extends FragmentActivity implements OnMapRead
                     icon(BitmapDescriptorFactory.fromBitmap(resized)).title(Common.currentShippingOrder.getShipperName())
                     .snippet(Common.currentShippingOrder.getShipperPhone()).position(locationShipper));
 
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(locationShipper, 18));
         } else {
             shipperMarker.setPosition(locationShipper);
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(locationShipper, 18));
         }
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(locationShipper, 18));
 
         //draw routes
         String to = Common.currentShippingOrder.getOrderModel().getLat() +
@@ -288,6 +287,6 @@ public class TrackingOrderActivity extends FragmentActivity implements OnMapRead
 
     @Override
     public void onCancelled(@NonNull DatabaseError error) {
-
+        Toast.makeText(TrackingOrderActivity.this, ""+error.getMessage(), Toast.LENGTH_SHORT).show();
     }
 }

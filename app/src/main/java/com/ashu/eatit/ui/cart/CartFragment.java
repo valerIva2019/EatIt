@@ -6,22 +6,31 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.media.Image;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.Parcelable;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,6 +47,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.ashu.eatit.Adapter.MyCartAdapter;
 import com.ashu.eatit.Callback.ILoadTimeFromFirebaseListener;
+import com.ashu.eatit.Callback.ISearchCategoryCallbackListener;
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.Common.MySwiperHelper;
 import com.ashu.eatit.Database.CartDataSource;
@@ -48,8 +58,12 @@ import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.HideFABCart;
 import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
+import com.ashu.eatit.Model.AddonModel;
+import com.ashu.eatit.Model.CategoryModel;
 import com.ashu.eatit.Model.FCMSendData;
+import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.Model.OrderModel;
+import com.ashu.eatit.Model.SizeModel;
 import com.ashu.eatit.R;
 import com.ashu.eatit.Remote.ICloudFunctions;
 import com.ashu.eatit.Remote.IFCMService;
@@ -64,16 +78,23 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.libraries.places.api.Places;
 import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -82,6 +103,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -101,8 +123,13 @@ import io.reactivex.disposables.Disposable;
 import io.reactivex.observers.DisposableSingleObserver;
 import io.reactivex.schedulers.Schedulers;
 
-public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListener {
+public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListener, ISearchCategoryCallbackListener, TextWatcher {
 
+    private BottomSheetDialog addonBottomSheetDialog;
+    private ChipGroup chip_group_addon, chip_group_user_selected_addon;
+    private EditText edt_search;
+
+    ISearchCategoryCallbackListener iSearchCategoryCallbackListener;
     private Place placeSelected;
     AutocompleteSupportFragment places_fragment;
     PlacesClient placesClient;
@@ -459,7 +486,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     private void initViews() {
 
         initPlacesClient();
-
+        iSearchCategoryCallbackListener = this;
         setHasOptionsMenu(true);
 
         cartDataSource = new LocalCartDataSource(CartDatabase.getInstance(getContext()).cartDAO());
@@ -469,6 +496,16 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         recycler_cart.setLayoutManager(layoutManager);
         recycler_cart.addItemDecoration(new DividerItemDecoration(getContext(), layoutManager.getOrientation()));
+
+        addonBottomSheetDialog = new BottomSheetDialog(getContext(), R.style.DialogStyle);
+        View layout_addon_display = getLayoutInflater().inflate(R.layout.layout_addon_display, null);
+        chip_group_addon =  layout_addon_display.findViewById(R.id.chip_group_addon);
+        edt_search =  layout_addon_display.findViewById(R.id.edt_search);
+        addonBottomSheetDialog.setContentView(layout_addon_display);
+        addonBottomSheetDialog.setOnDismissListener(dialogInterface -> {
+            displayUserSelectedAddOn();
+            calculateTotalPrice();
+        });
 
         MySwiperHelper mySwiperHelper = new MySwiperHelper(getContext(), recycler_cart, 200) {
             @Override
@@ -501,12 +538,58 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                                         }
                                     });
                         }));
+                buf.add(new MyButton(getContext(), "Update", 30, 0, Color.parseColor("#5D4037"),
+                        pos -> {
+                            CartItem cartItem = myCartAdapter.getItemAtPosition(pos);
+                            FirebaseDatabase.getInstance().getReference(Common.CATEGORY_REF)
+                                    .child(cartItem.getCategoryId())
+                                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                                        @Override
+                                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                            if (snapshot.exists()) {
+                                                CategoryModel categoryModel = snapshot.getValue(CategoryModel.class);
+                                                iSearchCategoryCallbackListener.onSearchCategoryFound(categoryModel, cartItem);
+                                            } else {
+                                                iSearchCategoryCallbackListener.onSearchCategoryNotFound("Food not found");
+                                            }
+                                        }
+
+                                        @Override
+                                        public void onCancelled(@NonNull DatabaseError error) {
+                                            iSearchCategoryCallbackListener.onSearchCategoryNotFound(error.getMessage());
+
+                                        }
+                                    });
+
+                        }));
             }
         };
 
         sumAllItemsInCart();
     }
+    private void displayUserSelectedAddOn() {
+        if (Common.selectedFood.getUserSelectedAddon() != null &&
+                Common.selectedFood.getUserSelectedAddon().size() > 0) {
+            chip_group_user_selected_addon.removeAllViews(); //clear all views already added
+            for(AddonModel addonModel : Common.selectedFood.getUserSelectedAddon()) //add all addon to the list
+            {
+                Chip chip = (Chip) getLayoutInflater().inflate(R.layout.layout_chip_with_delete_icon, null);
+                chip.setText(new StringBuilder(addonModel.getName()).append("(+$")
+                        .append(addonModel.getPrice()).append(")"));
+                chip.setClickable(false);
+                chip.setOnCloseIconClickListener(view -> {
+                    chip_group_user_selected_addon.removeView(view);
+                    Common.selectedFood.getUserSelectedAddon().remove(addonModel);
+                    calculateTotalPrice();
+                });
+                chip_group_user_selected_addon.addView(chip);
+            }
 
+        }
+        else
+            chip_group_user_selected_addon.removeAllViews();
+
+    }
     private void initPlacesClient() {
         Places.initialize(getContext(), getString(R.string.google_maps_key));
         placesClient = Places.createClient(getContext());
@@ -753,5 +836,199 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     public void onDestroy() {
         EventBus.getDefault().postSticky(new MenuItemBack());
         super.onDestroy();
+    }
+
+
+    @Override
+    public void onSearchCategoryFound(CategoryModel categoryModel, CartItem cartItem) {
+        FoodModel foodModel = Common.findFoodInListById(categoryModel, cartItem.getFoodId());
+        if (foodModel != null) {
+            showUpdateDialog(cartItem, foodModel);
+        } else {
+            Toast.makeText(getContext(), "Food Id not found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showUpdateDialog(CartItem cartItem, FoodModel foodModel) {
+        Common.selectedFood = foodModel;
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        View itemView = LayoutInflater.from(getContext()).inflate(R.layout.layout_dialog_update_cart, null);
+        builder.setView(itemView);
+
+        Button btn_ok = itemView.findViewById(R.id.btn_ok);
+        Button btn_cancel = itemView.findViewById(R.id.btn_cancel);
+
+        RadioGroup rdi_group_size = itemView.findViewById(R.id.rdi_group_size);
+        chip_group_user_selected_addon = itemView.findViewById(R.id.chip_group_user_selected_addon);
+        ImageView img_add_on = itemView.findViewById(R.id.img_add_addon);
+        img_add_on.setOnClickListener(view -> {
+            if (foodModel != null) {
+                displayAddonList();
+                addonBottomSheetDialog.show();
+            }
+        });
+
+        if (foodModel.getSize() != null) {
+            for (SizeModel sizeModel : foodModel.getSize()) {
+                RadioButton radioButton = new RadioButton(getContext());
+                radioButton.setOnCheckedChangeListener((compoundButton, b) -> {
+                    if (b)
+                        Common.selectedFood.setUserSelectedSize(sizeModel);
+                    calculateTotalPrice();
+                });
+
+                ViewGroup.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1.0f);
+                radioButton.setLayoutParams(params);
+                radioButton.setText(sizeModel.getName());
+                radioButton.setTag(sizeModel.getPrice());
+
+                rdi_group_size.addView(radioButton);
+
+            }
+
+            if (rdi_group_size.getChildCount() > 0) {
+                RadioButton radioButton = (RadioButton) rdi_group_size.getChildAt(0);
+                radioButton.setChecked(true);
+            }
+        }
+
+        //addon
+        displayAlreadySelectedAddon(chip_group_user_selected_addon, cartItem);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        dialog.getWindow().setGravity(Gravity.CENTER);
+
+        btn_cancel.setOnClickListener(view -> dialog.dismiss());
+        btn_ok.setOnClickListener(view -> cartDataSource.deleteCartItem(cartItem)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new SingleObserver<Integer>() {
+                    @Override
+                    public void onSubscribe(@io.reactivex.annotations.NonNull Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onSuccess(@io.reactivex.annotations.NonNull Integer integer) {
+                        if (Common.selectedFood.getUserSelectedAddon() != null)
+                            cartItem.setFoodAddon(new Gson().toJson(Common.selectedFood.getUserSelectedAddon()));
+                        else
+                            cartItem.setFoodAddon("Default");
+                        if (Common.selectedFood.getUserSelectedSize() != null)
+                            cartItem.setFoodSize(new Gson().toJson(Common.selectedFood.getUserSelectedSize()));
+                        else
+                            cartItem.setFoodSize("Default");
+
+                        cartItem.setFoodExtraPrice(Common.calculateExtraPrice(Common.selectedFood.getUserSelectedSize(),
+                                Common.selectedFood.getUserSelectedAddon()));
+
+                        compositeDisposable.add(cartDataSource.insertOrReplaceAll(cartItem)
+                                .subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(() -> {
+                                    Toast.makeText(getContext(), "Updated", Toast.LENGTH_SHORT).show();
+                                    calculateTotalPrice();
+                                    dialog.dismiss();
+                                    EventBus.getDefault().postSticky(new CounterCartEvent(true));
+
+                                }, throwable -> Toast.makeText(getContext(), "[CART ERROR]" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
+
+                    }
+
+                    @Override
+                    public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                        Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }));
+    }
+
+    private void displayAlreadySelectedAddon(ChipGroup chip_group_user_selected_addon, CartItem cartItem) {
+        if (cartItem.getFoodAddon() != null &&
+                !cartItem.getFoodAddon().equals("Default")) {
+            List<AddonModel> addonModels = new Gson().fromJson(cartItem.getFoodAddon(), new TypeToken<List<AddonModel>>(){}.getType());
+            Common.selectedFood.setUserSelectedAddon(addonModels);
+            chip_group_user_selected_addon.removeAllViews();
+
+
+            for(AddonModel addonModel : addonModels) //add all addon to the list
+            {
+                Chip chip = (Chip) getLayoutInflater().inflate(R.layout.layout_chip_with_delete_icon, null);
+                chip.setText(new StringBuilder(addonModel.getName()).append("(+$")
+                        .append(addonModel.getPrice()).append(")"));
+                chip.setClickable(false);
+                chip.setOnCloseIconClickListener(view -> {
+                    chip_group_user_selected_addon.removeView(view);
+                    Common.selectedFood.getUserSelectedAddon().remove(addonModel);
+                    calculateTotalPrice();
+                });
+                chip_group_user_selected_addon.addView(chip);
+            }
+
+        }
+    }
+
+    private void displayAddonList() {
+        if (Common.selectedFood.getAddon() != null && Common.selectedFood.getAddon().size() > 0) {
+            chip_group_addon.clearCheck();
+            chip_group_addon.removeAllViews();
+
+            edt_search.addTextChangedListener(this);
+
+            for (AddonModel addonModel:Common.selectedFood.getAddon()) {
+
+                Chip chip = (Chip) getLayoutInflater().inflate(R.layout.layout_addon_item, null);
+                chip.setText(new StringBuilder(addonModel.getName()).append("(+$")
+                        .append(addonModel.getPrice()).append(")"));
+                chip.setOnCheckedChangeListener((compoundButton, b) -> {
+                    if (b) {
+                        if (Common.selectedFood.getUserSelectedAddon() == null)
+                            Common.selectedFood.setUserSelectedAddon(new ArrayList<>());
+                        Common.selectedFood.getUserSelectedAddon().add(addonModel);
+                    }
+                });
+                chip_group_addon.addView(chip);
+            }
+
+        }
+    }
+
+    @Override
+    public void onSearchCategoryNotFound(String message) {
+        Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+    }
+
+    @Override
+    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+        chip_group_addon.clearCheck();
+        chip_group_addon.removeAllViews();
+
+        for (AddonModel addonModel:Common.selectedFood.getAddon()) {
+            if (addonModel.getName().toLowerCase().contains(charSequence.toString().toLowerCase())) {
+                Chip chip = (Chip) getLayoutInflater().inflate(R.layout.layout_addon_item, null);
+                chip.setText(new StringBuilder(addonModel.getName()).append("(+$")
+                        .append(addonModel.getPrice()).append(")"));
+                chip.setOnCheckedChangeListener((compoundButton, b) -> {
+                    if (b) {
+                        if (Common.selectedFood.getUserSelectedAddon() == null)
+                            Common.selectedFood.setUserSelectedAddon(new ArrayList<>());
+                        Common.selectedFood.getUserSelectedAddon().add(addonModel);
+                    }
+                });
+                chip_group_addon.addView(chip);
+            }
+        }
+    }
+
+    @Override
+    public void afterTextChanged(Editable editable) {
+
     }
 }

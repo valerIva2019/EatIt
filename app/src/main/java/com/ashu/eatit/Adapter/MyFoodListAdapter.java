@@ -69,7 +69,7 @@ public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.My
         Glide.with(context).load(foodModelList.get(position).getImage()).into(holder.img_food_image);
         holder.txt_food_price.setText(new StringBuilder("$")
         .append(foodModelList.get(position).getPrice()));
-        holder.txt_food_name.setText(new StringBuilder("")
+        holder.txt_food_name.setText(new StringBuilder()
         .append(foodModelList.get(position).getName()));
 
         //event
@@ -81,6 +81,7 @@ public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.My
 
         holder.img_cart.setOnClickListener(view -> {
             CartItem cartItem = new CartItem();
+            cartItem.setRestaurantId(Common.restaurantSelected.getUid());
             cartItem.setUid(Common.currentUser.getUid());
             cartItem.setUserPhone(Common.currentUser.getPhone());
             cartItem.setCategoryId(Common.categorySelected.getMenu_id());
@@ -98,7 +99,7 @@ public class MyFoodListAdapter extends RecyclerView.Adapter<MyFoodListAdapter.My
                         Common.categorySelected.getMenu_id(),
                         cartItem.getFoodId(),
                         cartItem.getFoodSize(),
-                        cartItem.getFoodAddon())
+                        cartItem.getFoodAddon(), Common.restaurantSelected.getUid())
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(new SingleObserver<CartItem>() {

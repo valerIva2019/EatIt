@@ -285,10 +285,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     }
 
     private void paymentCOD(String address, String comment) {
-        compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid())
+        compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(cartItems -> cartDataSource.sumPriceInCart(Common.currentUser.getUid())
+                .subscribe(cartItems -> cartDataSource.sumPriceInCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(new SingleObserver<Double>() {
@@ -362,7 +362,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 .child(Common.createOrderNumber())
                 .setValue(orderModel)
                 .addOnFailureListener(e -> Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show())
-                .addOnCompleteListener(task -> cartDataSource.cleanCart(Common.currentUser.getUid())
+                .addOnCompleteListener(task -> cartDataSource.cleanCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(new SingleObserver<Integer>() {
@@ -596,7 +596,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     }
 
     private void sumAllItemsInCart() {
-        cartDataSource.sumPriceInCart(Common.currentUser.getUid())
+        cartDataSource.sumPriceInCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new SingleObserver<Double>() {
@@ -635,7 +635,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_clear_cart) {
-            cartDataSource.cleanCart(Common.currentUser.getUid())
+            cartDataSource.cleanCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(new SingleObserver<Integer>() {
@@ -724,7 +724,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     }
 
     private void calculateTotalPrice() {
-        cartDataSource.sumPriceInCart(Common.currentUser.getUid())
+        cartDataSource.sumPriceInCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new SingleObserver<Double>() {
@@ -756,7 +756,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 DropInResult result = data.getParcelableExtra(DropInResult.EXTRA_DROP_IN_RESULT);
                 PaymentMethodNonce nonce = result.getPaymentMethodNonce();
 
-                cartDataSource.sumPriceInCart(Common.currentUser.getUid()).subscribeOn(Schedulers.io())
+                cartDataSource.sumPriceInCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid()).subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(new SingleObserver<Double>() {
                             @Override
@@ -766,7 +766,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                             @Override
                             public void onSuccess(@io.reactivex.annotations.NonNull Double totalPrice) {
-                                compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid()).subscribeOn(Schedulers.io())
+                                compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid()).subscribeOn(Schedulers.io())
                                         .observeOn(AndroidSchedulers.mainThread())
                                         .subscribe(cartItems -> {
                                             Map<String, String> headers = new HashMap<>();

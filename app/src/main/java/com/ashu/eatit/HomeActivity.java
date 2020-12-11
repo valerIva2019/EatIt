@@ -1,7 +1,6 @@
 package com.ashu.eatit;
 
 import android.annotation.SuppressLint;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -24,6 +23,7 @@ import com.ashu.eatit.EventBus.CategoryClick;
 import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.FoodItemClick;
 import com.ashu.eatit.EventBus.HideFABCart;
+import com.ashu.eatit.EventBus.MenuInflateEvent;
 import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.EventBus.MenuItemEvent;
 import com.ashu.eatit.EventBus.PopularCategoryClick;
@@ -95,11 +95,10 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
     android.app.AlertDialog dialog;
 
-
     @Override
     protected void onResume() {
         super.onResume();
-        countCartItem();
+        //countCartItem();
 
     }
 
@@ -114,7 +113,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         dialog = new SpotsDialog.Builder().setContext(this).setCancelable(false).build();
         ButterKnife.bind(this);
         cartDataSource = new LocalCartDataSource(CartDatabase.getInstance(this).cartDAO());
-        countCartItem();
+        //countCartItem();
 
         fab.setOnClickListener(view -> navController.navigate(R.id.nav_cart));
 
@@ -139,7 +138,10 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         TextView txt_user = headerView.findViewById(R.id.txt_user);
         Common.setSpanString("Hey, ", Common.currentUser.getName(), txt_user);
 
-        countCartItem();
+        //Hide Fab beacuse restaurant list is shown
+        //countCartItem();
+
+        EventBus.getDefault().postSticky(new HideFABCart(true));
 
     }
 
@@ -174,19 +176,29 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                 break;
             case R.id.nav_home:
                 if (item.getItemId() != menuClickId)
+                {
                     navController.navigate(R.id.nav_home);
+                    EventBus.getDefault().postSticky(new MenuInflateEvent(true));
+                }
                 break;
             case R.id.nav_menu:
-                if (item.getItemId() != menuClickId)
+                if (item.getItemId() != menuClickId) {
                     navController.navigate(R.id.nav_menu);
+                    EventBus.getDefault().postSticky(new MenuInflateEvent(true));
+                }
                 break;
             case R.id.nav_cart:
-                if (item.getItemId() != menuClickId)
+                if (item.getItemId() != menuClickId) {
                     navController.navigate(R.id.nav_cart);
+                    EventBus.getDefault().postSticky(new MenuInflateEvent(true));
+                }
                 break;
             case R.id.nav_view_orders:
-                if (item.getItemId() != menuClickId)
+                if (item.getItemId() != menuClickId) {
                     navController.navigate(R.id.nav_view_orders);
+                    EventBus.getDefault().postSticky(new MenuInflateEvent(true));
+
+                }
                 break;
             case R.id.nav_sign_out:
                 signOut();
@@ -334,14 +346,15 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onCartCounter(CounterCartEvent event) {
         if (event.isSuccess()) {
-            countCartItem();
+            //countCartItem();
         }
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void countCartAgain(CounterCartEvent event) {
         if (event.isSuccess())
-            countCartItem();
+            if (Common.restaurantSelected != null)
+                countCartItem();
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
@@ -357,7 +370,9 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         if (event.getPopularCategoryModel() != null) {
             dialog.show();
 
-            FirebaseDatabase.getInstance().getReference("Category")
+            FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                    .child(Common.restaurantSelected.getUid())
+                    .child(Common.CATEGORY_REF)
                     .child(event.getPopularCategoryModel().getMenu_id())
                     .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
@@ -367,7 +382,9 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                                 Common.categorySelected.setMenu_id(snapshot.getKey());
 
 
-                                FirebaseDatabase.getInstance().getReference("Category")
+                                FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                                        .child(Common.restaurantSelected.getUid())
+                                        .child(Common.CATEGORY_REF)
                                         .child(event.getPopularCategoryModel().getMenu_id())
                                         .child("foods")
                                         .orderByChild("id")
@@ -420,7 +437,9 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         if (event.getBestDealModel() != null) {
             dialog.show();
 
-            FirebaseDatabase.getInstance().getReference("Category")
+            FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                    .child(Common.restaurantSelected.getUid())
+                    .child(Common.CATEGORY_REF)
                     .child(event.getBestDealModel().getMenu_id())
                     .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
@@ -429,7 +448,9 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                                 Common.categorySelected = snapshot.getValue(CategoryModel.class);
                                 Common.categorySelected.setMenu_id(snapshot.getKey());
 
-                                FirebaseDatabase.getInstance().getReference("Category")
+                                FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                                        .child(Common.restaurantSelected.getUid())
+                                        .child(Common.CATEGORY_REF)
                                         .child(event.getBestDealModel().getMenu_id())
                                         .child("foods")
                                         .orderByChild("id")
@@ -479,7 +500,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
     private void countCartItem() {
         Log.d("TAG", "countCartItem: " + Common.currentUser.getUid());
-        cartDataSource.countItemInCart(Common.currentUser.getUid())
+        cartDataSource.countItemInCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new SingleObserver<Integer>() {
@@ -522,5 +543,17 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         navController.navigate(R.id.nav_home, bundle);
         navigationView.getMenu().clear();
         navigationView.inflateMenu(R.menu.restaurant_detail_menu);
+        EventBus.getDefault().postSticky(new MenuInflateEvent(true));
+        EventBus.getDefault().postSticky(new HideFABCart(false));
+        countCartItem();
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    public void onInflateMenu(MenuInflateEvent event) {
+        navigationView.getMenu().clear();
+        if (event.isShowDetail())
+            navigationView.inflateMenu(R.menu.restaurant_detail_menu);
+        else
+            navigationView.inflateMenu(R.menu.activity_main_drawer);
     }
 }

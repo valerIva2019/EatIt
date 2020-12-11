@@ -107,7 +107,9 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
 
     private void loadOrdersFromFirebase() {
         List<OrderModel> orderModelList = new ArrayList<>();
-        FirebaseDatabase.getInstance().getReference(Common.ORDER_REF)
+        FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                .child(Common.restaurantSelected.getUid())
+                .child(Common.ORDER_REF)
                 .orderByChild("userId")
                 .equalTo(Common.currentUser.getUid())
                 .limitToLast(100)
@@ -260,7 +262,7 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
                         pos -> {
                             OrderModel orderModel = ((MyOrdersAdapter)recycler_orders.getAdapter()).getItemAtPosition(pos);
                             dialog.show();
-                            cartDataSource.cleanCart(Common.currentUser.getUid())
+                            cartDataSource.cleanCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                                     .subscribeOn(Schedulers.io())
                                     .observeOn(AndroidSchedulers.mainThread())
                                     .subscribe(new SingleObserver<Integer>() {

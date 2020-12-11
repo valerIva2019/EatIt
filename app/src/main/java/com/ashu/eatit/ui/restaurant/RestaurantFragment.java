@@ -25,8 +25,13 @@ import com.ashu.eatit.Adapter.MyCategoriesAdapter;
 import com.ashu.eatit.Adapter.MyRestaurantAdapter;
 import com.ashu.eatit.Common.Common;
 import com.ashu.eatit.Common.SpacesItemDecoration;
+import com.ashu.eatit.EventBus.CounterCartEvent;
+import com.ashu.eatit.EventBus.HideFABCart;
+import com.ashu.eatit.EventBus.MenuInflateEvent;
 import com.ashu.eatit.R;
 import com.ashu.eatit.ui.menu.MenuViewModel;
+
+import org.greenrobot.eventbus.EventBus;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -71,7 +76,7 @@ public class RestaurantFragment extends Fragment {
     }
 
     private void initViews() {
-
+        EventBus.getDefault().postSticky(new HideFABCart(true));
         setHasOptionsMenu(true);
 
         dialog = new SpotsDialog.Builder().setContext(getContext()).setCancelable(false).setMessage("Please Wait").build();
@@ -81,5 +86,12 @@ public class RestaurantFragment extends Fragment {
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         recycler_restaurant.setLayoutManager(layoutManager);
         recycler_restaurant.addItemDecoration(new DividerItemDecoration(getContext(), layoutManager.getOrientation()));
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        EventBus.getDefault().postSticky(new CounterCartEvent(true));
+        EventBus.getDefault().postSticky(new MenuInflateEvent(false));
     }
 }

@@ -94,9 +94,9 @@ public class MyOrderDetailAdapter extends RecyclerView.Adapter<MyOrderDetailAdap
         @SuppressLint("NonConstantResourceId")
         @BindView(R.id.txt_food_quantity)
         TextView txt_food_quantity;
-        @SuppressLint("NonConstantResourceId")
-        @BindView(R.id.txt_food_price)
-        TextView txt_food_price;
+        //@SuppressLint("NonConstantResourceId")
+        //@BindView(R.id.txt_food_price)
+        //TextView txt_food_price;
 
         public MyViewHolder(@NonNull View itemView) {
             super(itemView);

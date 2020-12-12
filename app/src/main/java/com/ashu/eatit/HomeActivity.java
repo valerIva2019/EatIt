@@ -3,6 +3,7 @@ package com.ashu.eatit;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -31,6 +32,8 @@ import com.ashu.eatit.Model.BestDealModel;
 import com.ashu.eatit.Model.CategoryModel;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.Model.UserModel;
+import com.ashu.eatit.Remote.ICloudFunctions;
+import com.ashu.eatit.Remote.RetrofitICloudClient;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -72,6 +75,7 @@ import dmax.dialog.SpotsDialog;
 import io.reactivex.Scheduler;
 import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 
@@ -85,6 +89,8 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     AutocompleteSupportFragment places_fragment;
     PlacesClient placesClient;
     List<Place.Field> placeFields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
+    private ICloudFunctions cloudFunctions;
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
     private CartDataSource cartDataSource;
     int menuClickId = -1;
@@ -322,6 +328,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onStop() {
         EventBus.getDefault().unregister(this);
+        compositeDisposable.clear();
         super.onStop();
     }
 
@@ -538,14 +545,29 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     public void onRestaurantClick(MenuItemEvent event) {
-        Bundle bundle = new Bundle();
-        bundle.putString("restaurant", event.getRestaurantModel().getUid());
-        navController.navigate(R.id.nav_home, bundle);
-        navigationView.getMenu().clear();
-        navigationView.inflateMenu(R.menu.restaurant_detail_menu);
-        EventBus.getDefault().postSticky(new MenuInflateEvent(true));
-        EventBus.getDefault().postSticky(new HideFABCart(false));
-        countCartItem();
+        cloudFunctions = RetrofitICloudClient.getInstance(event.getRestaurantModel().getPaymentUrl()).create(ICloudFunctions.class);
+        dialog.show();
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", Common.buildToken(Common.authorizeKey));
+        compositeDisposable.add(cloudFunctions.getToken(headers).subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(brainTreeToken -> {
+                    Common.currentToken = brainTreeToken.getToken();
+                    Bundle bundle = new Bundle();
+                    bundle.putString("restaurant", event.getRestaurantModel().getUid());
+                    navController.navigate(R.id.nav_home, bundle);
+                    navigationView.getMenu().clear();
+                    navigationView.inflateMenu(R.menu.restaurant_detail_menu);
+                    EventBus.getDefault().postSticky(new MenuInflateEvent(true));
+                    EventBus.getDefault().postSticky(new HideFABCart(false));
+                    countCartItem();
+                    dialog.dismiss();
+
+                }, throwable -> {
+                    dialog.dismiss();
+                    Toast.makeText(HomeActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                }));
+
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)

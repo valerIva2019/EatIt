@@ -172,6 +172,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
     @SuppressLint("NonConstantResourceId")
     @OnClick(R.id.btn_place_order)
+
     void onPlaceOrderClick() {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
@@ -358,7 +359,9 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     }
 
     private void writeOrderToFirebase(OrderModel orderModel) {
-        FirebaseDatabase.getInstance().getReference(Common.ORDER_REF)
+        FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                .child(Common.restaurantSelected.getUid())
+                .child(Common.ORDER_REF)
                 .child(Common.createOrderNumber())
                 .setValue(orderModel)
                 .addOnFailureListener(e -> Toast.makeText(getContext(), "" + e.getMessage(), Toast.LENGTH_SHORT).show())
@@ -430,7 +433,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         View root = inflater.inflate(R.layout.fragment_cart, container, false);
 
         ifcmService = RetrofitFCMClient.getInstance().create(IFCMService.class);
-        cloudFunctions = RetrofitICloudClient.getInstance().create(ICloudFunctions.class);
+        cloudFunctions = RetrofitICloudClient.getInstance(Common.restaurantSelected.getPaymentUrl()).create(ICloudFunctions.class);
         listener = this;
 
         cartViewModel.initCartDataSource(getContext());

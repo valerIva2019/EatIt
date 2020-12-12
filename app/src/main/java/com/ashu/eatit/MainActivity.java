@@ -86,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
     AutocompleteSupportFragment places_fragment;
     PlacesClient placesClient;
     List<Place.Field> placeFields = Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS, Place.Field.LAT_LNG);
+
     @Override
     protected void onStart() {
         super.onStart();
@@ -117,7 +118,6 @@ public class MainActivity extends AppCompatActivity {
         userRef = FirebaseDatabase.getInstance().getReference(Common.USER_REFERENCES);
         firebaseAuth = FirebaseAuth.getInstance();
         dialog = new SpotsDialog.Builder().setCancelable(false).setContext(this).build();
-        cloudFunctions = RetrofitICloudClient.getInstance().create(ICloudFunctions.class);
         listener = firebaseAuth -> Dexter.withActivity(this)
                 .withPermission(Manifest.permission.ACCESS_FINE_LOCATION)
                 .withListener(new PermissionListener() {
@@ -181,20 +181,11 @@ public class MainActivity extends AppCompatActivity {
                             .addOnCompleteListener(tokenResultTask -> {
 
                                 Common.authorizeKey = tokenResultTask.getResult().getToken();
-                                Map<String, String> headers = new HashMap<>();
-                                headers.put("Authorization", Common.buildToken(Common.authorizeKey));
 
-                                compositeDisposable.add(cloudFunctions.getToken(headers).subscribeOn(Schedulers.io())
-                                        .observeOn(AndroidSchedulers.mainThread())
-                                        .subscribe(brainTreeToken -> {
-                                            dialog.dismiss();
-                                            UserModel userModel = snapshot.getValue(UserModel.class);
-                                            goToHomeActivity(userModel, brainTreeToken.getToken());
+                                dialog.dismiss();
+                                UserModel userModel = snapshot.getValue(UserModel.class);
+                                goToHomeActivity(userModel);
 
-                                        }, throwable -> {
-                                            dialog.dismiss();
-                                            Toast.makeText(MainActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
-                                        }));
                             });
 
 
@@ -237,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onError(@NonNull Status status) {
                 Log.d("PLACES API", "onError: " + status.getStatusMessage());
-                Toast.makeText(MainActivity.this, ""+status.getStatusMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "" + status.getStatusMessage(), Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -248,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setNegativeButton("CANCEL", (dialogInterface, i) -> dialogInterface.dismiss());
         builder.setPositiveButton("REGISTER", (dialogInterface, i) -> {
 
-            if (placeSelected!= null) {
+            if (placeSelected != null) {
 
                 if (TextUtils.isEmpty(edt_name.getText().toString())) {
                     Toast.makeText(this, "Please enter your name", Toast.LENGTH_SHORT).show();
@@ -272,28 +263,18 @@ public class MainActivity extends AppCompatActivity {
                                         .addOnCompleteListener(tokenResultTask -> {
 
                                             Common.authorizeKey = tokenResultTask.getResult().getToken();
-                                            Map<String, String> headers = new HashMap<>();
-                                            headers.put("Authorization", Common.buildToken(Common.authorizeKey));
                                             Common.authorizeKey = tokenResultTask.getResult().getToken();
-                                            compositeDisposable.add(cloudFunctions.getToken(headers).subscribeOn(Schedulers.io())
-                                                    .observeOn(AndroidSchedulers.mainThread())
-                                                    .subscribe(brainTreeToken -> {
+
                                                         dialogInterface.dismiss();
                                                         Toast.makeText(MainActivity.this, "Registered", Toast.LENGTH_LONG).show();
-                                                        goToHomeActivity(userModel, brainTreeToken.getToken());
+                                                        goToHomeActivity(userModel);
 
 
-                                                    }, throwable -> {
-                                                        dialog.dismiss();
-                                                        Toast.makeText(MainActivity.this, "" + throwable.getMessage(), Toast.LENGTH_SHORT).show();
-
-                                                    }));
                                         });
 
                             }
                         });
-            }
-            else {
+            } else {
                 Toast.makeText(this, "Please select a address", Toast.LENGTH_SHORT).show();
             }
 
@@ -309,20 +290,18 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void goToHomeActivity(UserModel userModel, String token) {
+    private void goToHomeActivity(UserModel userModel) {
 
         FirebaseInstanceId.getInstance().getInstanceId()
                 .addOnFailureListener(e -> {
                     Toast.makeText(MainActivity.this, "" + e.getMessage(), Toast.LENGTH_SHORT).show();
 
                     Common.currentUser = userModel;
-                    Common.currentToken = token;
                     startActivity(new Intent(MainActivity.this, HomeActivity.class));
                     finish();
                 }).addOnCompleteListener(task -> {
 
             Common.currentUser = userModel;
-            Common.currentToken = token;
             Common.updateToken(MainActivity.this, task.getResult().getToken());
             startActivity(new Intent(MainActivity.this, HomeActivity.class));
             finish();

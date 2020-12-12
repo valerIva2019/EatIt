@@ -11,7 +11,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class RetrofitICloudClient {
 
     private static Retrofit instance;
-    public static Retrofit getInstance() {
+    public static Retrofit getInstance(String paymentUrl) {
 
         Pattern p = Pattern.compile("\\d+");
         Matcher m = p.matcher("string1234more567string890");

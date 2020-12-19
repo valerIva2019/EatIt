@@ -1,14 +1,20 @@
 package com.ashu.eatit;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
+import android.Manifest;
 import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -16,6 +22,7 @@ import android.view.animation.LinearInterpolator;
 import android.widget.Toast;
 
 import com.ashu.eatit.Common.Common;
+import com.ashu.eatit.Common.MyCustomMarkerAdapter;
 import com.ashu.eatit.Model.ShippingOrderModel;
 import com.ashu.eatit.Remote.IGoogleApi;
 import com.ashu.eatit.Remote.RetroFitGoogleApiClient;
@@ -37,12 +44,20 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.karumi.dexter.Dexter;
+import com.karumi.dexter.PermissionToken;
+import com.karumi.dexter.listener.PermissionDeniedResponse;
+import com.karumi.dexter.listener.PermissionGrantedResponse;
+import com.karumi.dexter.listener.PermissionRequest;
+import com.karumi.dexter.listener.single.PermissionListener;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.List;
 
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.schedulers.Schedulers;
@@ -66,12 +81,42 @@ public class TrackingOrderActivity extends FragmentActivity implements OnMapRead
     private double lat, lng;
     private boolean isInit = false;
 
+    @SuppressLint("NonConstantResourceId")
+    @OnClick(R.id.btn_call)
+    void onCallClick() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            Dexter.withActivity(this)
+                    .withPermission(Manifest.permission.CALL_PHONE)
+                    .withListener(new PermissionListener() {
+                        @Override
+                        public void onPermissionGranted(PermissionGrantedResponse permissionGrantedResponse) {
+
+                        }
+
+                        @Override
+                        public void onPermissionDenied(PermissionDeniedResponse permissionDeniedResponse) {
+                            Toast.makeText(TrackingOrderActivity.this, "You must accept this permission to call user", Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onPermissionRationaleShouldBeShown(PermissionRequest permissionRequest, PermissionToken permissionToken) {
+
+                        }
+                    }).check();
+
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_CALL);
+        intent.setData(Uri.parse("tel:" + Common.currentShippingOrder.getShipperPhone()));
+        startActivity(intent);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_tracking_order);
 
+        ButterKnife.bind(this);
         iGoogleApi = RetroFitGoogleApiClient.getInstance().create(IGoogleApi.class);
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -92,6 +137,9 @@ public class TrackingOrderActivity extends FragmentActivity implements OnMapRead
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+
+        mMap.setInfoWindowAdapter(new MyCustomMarkerAdapter(getLayoutInflater()));
+
         mMap.getUiSettings().setZoomControlsEnabled(true);
 
         try {
@@ -123,8 +171,11 @@ public class TrackingOrderActivity extends FragmentActivity implements OnMapRead
                     getDrawable(TrackingOrderActivity.this, R.drawable.shippernew);
             Bitmap resized = Bitmap.createScaledBitmap(bitmapDrawable.getBitmap(), width, height, false);
             shipperMarker = mMap.addMarker(new MarkerOptions().
-                    icon(BitmapDescriptorFactory.fromBitmap(resized)).title(Common.currentShippingOrder.getShipperName())
-                    .snippet(Common.currentShippingOrder.getShipperPhone()).position(locationShipper));
+                    icon(BitmapDescriptorFactory.fromBitmap(resized)).title("Shipper : " + Common.currentShippingOrder.getShipperName())
+                    .snippet("Phone : " + Common.currentShippingOrder.getShipperPhone() + "\n" +
+                            "Estimate Time Delivery : " + Common.currentShippingOrder.getEstimateTime()).position(locationShipper));
+
+            shipperMarker.showInfoWindow();
 
         } else {
             shipperMarker.setPosition(locationShipper);

@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.Menu;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -48,6 +49,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -72,6 +74,7 @@ import java.util.Map;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import dmax.dialog.SpotsDialog;
+import io.paperdb.Paper;
 import io.reactivex.Scheduler;
 import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
@@ -181,8 +184,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                     navController.navigate(R.id.nav_restaurant);
                 break;
             case R.id.nav_home:
-                if (item.getItemId() != menuClickId)
-                {
+                if (item.getItemId() != menuClickId) {
                     navController.navigate(R.id.nav_home);
                     EventBus.getDefault().postSticky(new MenuInflateEvent(true));
                 }
@@ -209,12 +211,48 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
             case R.id.nav_sign_out:
                 signOut();
                 break;
+            case R.id.nav_news:
+                showSubscribeNews();
+                break;
             case R.id.nav_update_info:
                 showUpdateInfoDialog();
                 break;
         }
         menuClickId = item.getItemId();
         return true;
+    }
+
+    private void showSubscribeNews() {
+        Paper.init(this);
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("News System");
+        builder.setMessage("Do you want to subscribe news from our restaurant ?");
+
+        View itemView = LayoutInflater.from(this).inflate(R.layout.layout_subscribe_news, null);
+        CheckBox ckb_news = itemView.findViewById(R.id.ckb_subscribe_news);
+        boolean isSubscribeNews = Paper.book().read(Common.IS_SUBSCRIBE_NEWS, false);
+
+        if (isSubscribeNews) {
+            ckb_news.setChecked(true);
+
+        }
+
+        builder.setNegativeButton("CANCEL", (dialogInterface, i) -> dialogInterface.dismiss());
+        builder.setPositiveButton("SEND", (dialogInterface, i) -> {
+            if (ckb_news.isChecked()) {
+                Paper.book().write(Common.IS_SUBSCRIBE_NEWS, true);
+                FirebaseMessaging.getInstance().subscribeToTopic(Common.NEWS_TOPIC)
+                        .addOnFailureListener(e -> Toast.makeText(HomeActivity.this, "" + e.getMessage(), Toast.LENGTH_SHORT).show()).addOnSuccessListener(aVoid -> Toast.makeText(HomeActivity.this, "Subscribed successfully", Toast.LENGTH_SHORT).show());
+            } else {
+                Paper.book().delete(Common.IS_SUBSCRIBE_NEWS);
+                FirebaseMessaging.getInstance().unsubscribeFromTopic(Common.NEWS_TOPIC)
+                        .addOnFailureListener(e -> Toast.makeText(HomeActivity.this, "" + e.getMessage(), Toast.LENGTH_SHORT).show()).addOnSuccessListener(aVoid -> Toast.makeText(HomeActivity.this, "Unsubscribed successfully", Toast.LENGTH_SHORT).show());
+
+            }
+        });
+        builder.setView(itemView);
+        android.app.AlertDialog dialog = builder.create();
+        dialog.show();
     }
 
     private void showUpdateInfoDialog() {

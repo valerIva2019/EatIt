@@ -3,6 +3,7 @@ package com.ashu.eatit.ui.cart;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -280,6 +281,12 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 });
 
         AlertDialog dialog = builder.create();
+        dialog.setOnDismissListener(dialog1 -> {
+            if (places_fragment != null)
+                getActivity().getSupportFragmentManager()
+                .beginTransaction().remove(places_fragment)
+                .commit();
+        });
         dialog.show();
 
 
@@ -679,6 +686,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     @Override
     public void onStop() {
         EventBus.getDefault().postSticky(new HideFABCart(false));
+        EventBus.getDefault().postSticky(new CounterCartEvent(false));
         if (EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().unregister(this);
         }

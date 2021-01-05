@@ -544,7 +544,9 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 buf.add(new MyButton(getContext(), "Update", 30, 0, Color.parseColor("#5D4037"),
                         pos -> {
                             CartItem cartItem = myCartAdapter.getItemAtPosition(pos);
-                            FirebaseDatabase.getInstance().getReference(Common.CATEGORY_REF)
+                            FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                                    .child(Common.restaurantSelected.getUid())
+                                    .child(Common.CATEGORY_REF)
                                     .child(cartItem.getCategoryId())
                                     .addListenerForSingleValueEvent(new ValueEventListener() {
                                         @Override

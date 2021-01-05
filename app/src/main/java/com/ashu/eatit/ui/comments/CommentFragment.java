@@ -80,7 +80,9 @@ public class CommentFragment extends BottomSheetDialogFragment implements IComme
     private void loadCommentsFromFirebase() {
         dialog.show();
         List<CommentModel> commentModels = new ArrayList<>();
-        FirebaseDatabase.getInstance().getReference(Common.COMMENT_REF)
+        FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                .child(Common.restaurantSelected.getUid())
+                .child(Common.COMMENT_REF)
                 .child(Common.selectedFood.getId())
                 .orderByChild("serverTimeStamp")
                 .limitToLast(100)

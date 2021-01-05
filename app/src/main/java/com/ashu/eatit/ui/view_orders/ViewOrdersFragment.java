@@ -2,7 +2,6 @@ package com.ashu.eatit.ui.view_orders;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -17,7 +16,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -34,14 +32,11 @@ import com.ashu.eatit.Database.CartItem;
 import com.ashu.eatit.Database.LocalCartDataSource;
 import com.ashu.eatit.EventBus.CounterCartEvent;
 import com.ashu.eatit.EventBus.MenuItemBack;
-import com.ashu.eatit.MainActivity;
 import com.ashu.eatit.Model.OrderModel;
 import com.ashu.eatit.Model.RefundRequestModel;
 import com.ashu.eatit.Model.ShippingOrderModel;
 import com.ashu.eatit.R;
 import com.ashu.eatit.TrackingOrderActivity;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
@@ -54,7 +49,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -156,7 +150,9 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
                                            .setPositiveButton("YES", (dialogInterface, i) -> {
                                                Map<String, Object> updateData = new HashMap<>();
                                                updateData.put("orderStatus", -1);
-                                               FirebaseDatabase.getInstance().getReference(Common.ORDER_REF)
+                                               FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                                                       .child(Common.restaurantSelected.getUid())
+                                                       .child(Common.ORDER_REF)
                                                        .child(orderModel.getOrderNumber())
                                                        .updateChildren(updateData)
                                                        .addOnFailureListener(e -> Toast.makeText(getContext(), ""+e.getMessage(), Toast.LENGTH_SHORT).show()).addOnSuccessListener(aVoid -> {
@@ -199,14 +195,18 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
 /*
                                                String key = new StringBuilder().append(Common.currentUser.getPhone()).append("_")
                                                        .append(new Random().nextInt()).toString();*/
-                                               FirebaseDatabase.getInstance().getReference(Common.REQUEST_REFUND_MODEL)
+                                               FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                                                       .child(Common.restaurantSelected.getUid())
+                                                       .child(Common.REQUEST_REFUND_REF)
                                                        .child(orderModel.getOrderNumber())
                                                        .setValue(refundRequestModel)
                                                        .addOnFailureListener(e -> Toast.makeText(getContext(), ""+e.getMessage(), Toast.LENGTH_SHORT).show())
                                                        .addOnSuccessListener(aVoid -> {
                                                            Map<String, Object> updateData = new HashMap<>();
                                                            updateData.put("orderStatus", -1);
-                                                           FirebaseDatabase.getInstance().getReference(Common.ORDER_REF)
+                                                           FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                                                                   .child(Common.restaurantSelected.getUid())
+                                                                   .child(Common.ORDER_REF)
                                                                    .child(orderModel.getOrderNumber())
                                                                    .updateChildren(updateData)
                                                                    .addOnFailureListener(e -> Toast.makeText(getContext(), ""+e.getMessage(), Toast.LENGTH_SHORT).show())
@@ -233,7 +233,9 @@ public class ViewOrdersFragment extends Fragment implements ILoadOrderCallbackLi
                 buf.add(new MyButton(getContext(), "Tracking Order", 30, 0, Color.parseColor("#001970"),
                         pos -> {
                             OrderModel orderModel = ((MyOrdersAdapter)recycler_orders.getAdapter()).getItemAtPosition(pos);
-                            FirebaseDatabase.getInstance().getReference(Common.SHIPPING_ORDER_REF)
+                            FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                                    .child(Common.restaurantSelected.getUid())
+                                    .child(Common.SHIPPING_ORDER_REF)
                                     .child(orderModel.getOrderNumber())
                                     .addListenerForSingleValueEvent(new ValueEventListener() {
                                         @Override

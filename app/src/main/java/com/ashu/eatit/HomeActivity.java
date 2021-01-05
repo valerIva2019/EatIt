@@ -230,7 +230,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
         View itemView = LayoutInflater.from(this).inflate(R.layout.layout_subscribe_news, null);
         CheckBox ckb_news = itemView.findViewById(R.id.ckb_subscribe_news);
-        boolean isSubscribeNews = Paper.book().read(Common.IS_SUBSCRIBE_NEWS, false);
+        boolean isSubscribeNews = Paper.book().read(Common.restaurantSelected.getUid(), false);
 
         if (isSubscribeNews) {
             ckb_news.setChecked(true);
@@ -240,12 +240,12 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         builder.setNegativeButton("CANCEL", (dialogInterface, i) -> dialogInterface.dismiss());
         builder.setPositiveButton("SEND", (dialogInterface, i) -> {
             if (ckb_news.isChecked()) {
-                Paper.book().write(Common.IS_SUBSCRIBE_NEWS, true);
-                FirebaseMessaging.getInstance().subscribeToTopic(Common.NEWS_TOPIC)
+                Paper.book().write(Common.restaurantSelected.getUid(), true);
+                FirebaseMessaging.getInstance().subscribeToTopic(Common.createTopicNews())
                         .addOnFailureListener(e -> Toast.makeText(HomeActivity.this, "" + e.getMessage(), Toast.LENGTH_SHORT).show()).addOnSuccessListener(aVoid -> Toast.makeText(HomeActivity.this, "Subscribed successfully", Toast.LENGTH_SHORT).show());
             } else {
-                Paper.book().delete(Common.IS_SUBSCRIBE_NEWS);
-                FirebaseMessaging.getInstance().unsubscribeFromTopic(Common.NEWS_TOPIC)
+                Paper.book().delete(Common.restaurantSelected.getUid());
+                FirebaseMessaging.getInstance().unsubscribeFromTopic(Common.createTopicNews())
                         .addOnFailureListener(e -> Toast.makeText(HomeActivity.this, "" + e.getMessage(), Toast.LENGTH_SHORT).show()).addOnSuccessListener(aVoid -> Toast.makeText(HomeActivity.this, "Unsubscribed successfully", Toast.LENGTH_SHORT).show());
 
             }

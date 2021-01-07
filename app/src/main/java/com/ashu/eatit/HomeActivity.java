@@ -73,6 +73,7 @@ import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 import dmax.dialog.SpotsDialog;
 import io.paperdb.Paper;
 import io.reactivex.Scheduler;
@@ -102,7 +103,17 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     @BindView(R.id.fab)
     CounterFab fab;
 
+    @SuppressLint("NonConstantResourceId")
+    @BindView(R.id.fab_chat)
+    CounterFab fab_chat;
+
     android.app.AlertDialog dialog;
+
+    @SuppressLint("NonConstantResourceId")
+    @OnClick(R.id.fab_chat)
+    void onFabChatClick() {
+        startActivity(new Intent(this, ChatActivity.class));
+    }
 
     @Override
     protected void onResume() {
@@ -406,8 +417,11 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     public void onHideFABEvent(HideFABCart event) {
         if (event.isHidden()) {
             fab.hide();
-        } else
+            fab_chat.hide();
+        } else {
             fab.show();
+            fab_chat.show();
+        }
     }
 
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)

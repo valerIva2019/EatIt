@@ -23,7 +23,6 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <include layout="@layout/content_main" />
-
     <com.andremion.counterfab.CounterFab
         android:id="@+id/fab"
         android:layout_width="wrap_content"
@@ -32,5 +31,14 @@
         android:layout_margin="@dimen/fab_margin"
         android:tint="@android:color/white"
         app:srcCompat="@drawable/ic_baseline_shopping_cart_24" />
+
+    <com.andremion.counterfab.CounterFab
+        android:id="@+id/fab_chat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="@dimen/fab_margin"
+        android:tint="@android:color/white"
+        app:srcCompat="@drawable/ic_baseline_chat_24" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

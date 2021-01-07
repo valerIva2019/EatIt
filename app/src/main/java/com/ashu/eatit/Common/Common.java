@@ -4,13 +4,17 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.OpenableColumns;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
@@ -63,6 +67,7 @@ public class Common {
 
     public static final String IS_SEND_IMAGE = "IS_SEND_IMAGE";
     public static final String IMAGE_URL = "IMAGE_URL";
+    public static final String CHAT_REF = "Chat";
     private static final String TOKEN_REF = "Tokens";
 
     public static UserModel currentUser;
@@ -324,5 +329,34 @@ public class Common {
     public static String createTopicNews() {
         return "/topics/" +
                 Common.restaurantSelected.getUid() + "_news";
+    }
+
+    public static String generateChatRoomId(String a, String b) {
+        if (a.compareTo(b) > 0) {
+            return a + b;
+        } else if (a.compareTo(b) < 0){
+            return b + a;
+        } else {
+            return "ChatYourself_Error_" + new Random().nextInt();
+        }
+    }
+
+    public static String getFileName(ContentResolver contentResolver, Uri fileUri) {
+        String result = null;
+        if (fileUri.getScheme().equals("content")) {
+            try (Cursor cursor = contentResolver.query(fileUri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst())
+                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+            }
+        }
+
+        if (result == null) {
+            result = fileUri.getPath();
+            int cut = result.lastIndexOf('/');
+            if (cut != -1) {
+                result = result.substring(cut + 1);
+            }
+        }
+        return result;
     }
 }

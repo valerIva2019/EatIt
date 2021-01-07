@@ -68,6 +68,7 @@ public class Common {
     public static final String IS_SEND_IMAGE = "IS_SEND_IMAGE";
     public static final String IMAGE_URL = "IMAGE_URL";
     public static final String CHAT_REF = "Chat";
+    public static final String CHAT_DETAIL_REF = "ChatDetail";
     private static final String TOKEN_REF = "Tokens";
 
     public static UserModel currentUser;

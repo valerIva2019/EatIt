@@ -376,6 +376,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     protected void onStop() {
+        EventBus.getDefault().removeAllStickyEvents();
         EventBus.getDefault().unregister(this);
         compositeDisposable.clear();
         super.onStop();

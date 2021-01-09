@@ -60,6 +60,8 @@ import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
 import com.karumi.dexter.listener.single.BasePermissionListener;
 import com.karumi.dexter.listener.single.PermissionListener;
 
+import org.greenrobot.eventbus.EventBus;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;

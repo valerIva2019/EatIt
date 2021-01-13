@@ -70,7 +70,8 @@ public class MyCartAdapter extends RecyclerView.Adapter<MyCartAdapter.MyViewHold
             if (cartItemList.get(position).getFoodAddon().equals("Default")){
                 holder.txt_food_addon.setText(new StringBuilder("Addon : ").append("Default"));
             } else {
-                List<AddonModel> addonModels = gson.fromJson(cartItemList.get(position).getFoodAddon(), new TypeToken<AddonModel>(){}.getType());
+                List<AddonModel> addonModels = gson.fromJson(cartItemList.get(position).getFoodAddon(),
+                        new TypeToken<List<AddonModel>>(){}.getType());
                 holder.txt_food_addon.setText(new StringBuilder("Addon : ").append(Common.getListAddon(addonModels)));
             }
         }

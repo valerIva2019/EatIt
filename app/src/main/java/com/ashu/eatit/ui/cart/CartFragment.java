@@ -61,6 +61,7 @@ import com.ashu.eatit.EventBus.MenuItemBack;
 import com.ashu.eatit.EventBus.UpdateItemInCart;
 import com.ashu.eatit.Model.AddonModel;
 import com.ashu.eatit.Model.CategoryModel;
+import com.ashu.eatit.Model.DiscountModel;
 import com.ashu.eatit.Model.FCMSendData;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.Model.OrderModel;
@@ -70,6 +71,7 @@ import com.ashu.eatit.Remote.ICloudFunctions;
 import com.ashu.eatit.Remote.IFCMService;
 import com.ashu.eatit.Remote.RetrofitFCMClient;
 import com.ashu.eatit.Remote.RetrofitICloudClient;
+import com.ashu.eatit.ScanQRActivity;
 import com.braintreepayments.api.dropin.DropInRequest;
 import com.braintreepayments.api.dropin.DropInResult;
 import com.braintreepayments.api.models.PaymentMethodNonce;
@@ -116,6 +118,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.Unbinder;
+import dmax.dialog.SpotsDialog;
 import io.reactivex.Single;
 import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
@@ -126,6 +129,7 @@ import io.reactivex.schedulers.Schedulers;
 
 public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListener, ISearchCategoryCallbackListener, TextWatcher {
 
+    private static final int SCAN_QR_PERMISSION = 7171;
     private BottomSheetDialog addonBottomSheetDialog;
     private ChipGroup chip_group_addon, chip_group_user_selected_addon;
     private EditText edt_search;
@@ -172,8 +176,85 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     TextView txt_empty_cart;
 
     @SuppressLint("NonConstantResourceId")
-    @OnClick(R.id.btn_place_order)
+    @BindView(R.id.edt_discount_code)
+    EditText edt_discount_code;
 
+    @SuppressLint("NonConstantResourceId")
+    @OnClick(R.id.img_scan)
+    void onScanQRCode() {
+        startActivityForResult(new Intent(requireContext(), ScanQRActivity.class), SCAN_QR_PERMISSION);
+    }
+
+    ;
+
+    @SuppressLint("NonConstantResourceId")
+    @OnClick(R.id.img_check)
+    void onApplyDiscount() {
+        if (!TextUtils.isEmpty(edt_discount_code.getText().toString())) {
+            android.app.AlertDialog alertDialog = new SpotsDialog.Builder().setContext(getContext())
+                    .setMessage("Applying discount ...")
+                    .setCancelable(false)
+                    .build();
+
+            alertDialog.show();
+
+            final DatabaseReference offsetRef = FirebaseDatabase.getInstance().getReference(".info/serverTimeOffset");
+            final DatabaseReference discountRef = FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+                    .child(Common.restaurantSelected.getUid())
+                    .child(Common.DISCOUNT);
+
+            offsetRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    long offset = snapshot.getValue(Long.class);
+                    long estimateServerTimeMs = System.currentTimeMillis() + offset;
+
+                    discountRef.child(edt_discount_code.getText().toString().toLowerCase())
+                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    if (snapshot.exists()) {
+                                        DiscountModel discountModel = snapshot.getValue(DiscountModel.class);
+                                        discountModel.setKey(snapshot.getKey());
+
+                                        if (discountModel.getUntilDate() < estimateServerTimeMs) {
+                                            alertDialog.dismiss();
+                                            listener.onLoadTimeFailed("Discount expired");
+                                        } else {
+                                            Common.discountApply = discountModel;
+                                            sumAllItemsInCart();
+                                            alertDialog.dismiss();
+                                        }
+                                    }
+                                    else {
+                                        alertDialog.dismiss();
+                                        listener.onLoadTimeFailed("Discount not valid");
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError error) {
+                                    alertDialog.dismiss();
+                                    listener.onLoadTimeFailed(error.getMessage());
+                                }
+                            });
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    alertDialog.dismiss();
+                    listener.onLoadTimeFailed(error.getMessage());
+
+                }
+            });
+        }
+    }
+
+    ;
+
+
+    @SuppressLint("NonConstantResourceId")
+    @OnClick(R.id.btn_place_order)
     void onPlaceOrderClick() {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
@@ -284,8 +365,8 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         dialog.setOnDismissListener(dialog1 -> {
             if (places_fragment != null)
                 getActivity().getSupportFragmentManager()
-                .beginTransaction().remove(places_fragment)
-                .commit();
+                        .beginTransaction().remove(places_fragment)
+                        .commit();
         });
         dialog.show();
 
@@ -326,7 +407,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                                 orderModel.setCartItemList(cartItems);
                                 orderModel.setTotalPayment(totalPrice);
-                                orderModel.setDiscount(0); //implement discount functionality late todo
+                                if (Common.discountApply != null) {
+                                    orderModel.setDiscount(Common.discountApply.getPercent());
+                                } else
+                                    orderModel.setDiscount(0);
                                 orderModel.setFinalPayment(finalPrice);
                                 orderModel.setCod(true);
                                 orderModel.setTransactionId("Cash On Delivery");
@@ -509,8 +593,8 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
         addonBottomSheetDialog = new BottomSheetDialog(getContext(), R.style.DialogStyle);
         View layout_addon_display = getLayoutInflater().inflate(R.layout.layout_addon_display, null);
-        chip_group_addon =  layout_addon_display.findViewById(R.id.chip_group_addon);
-        edt_search =  layout_addon_display.findViewById(R.id.edt_search);
+        chip_group_addon = layout_addon_display.findViewById(R.id.chip_group_addon);
+        edt_search = layout_addon_display.findViewById(R.id.edt_search);
         addonBottomSheetDialog.setContentView(layout_addon_display);
         addonBottomSheetDialog.setOnDismissListener(dialogInterface -> {
             displayUserSelectedAddOn();
@@ -579,11 +663,12 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
         sumAllItemsInCart();
     }
+
     private void displayUserSelectedAddOn() {
         if (Common.selectedFood.getUserSelectedAddon() != null &&
                 Common.selectedFood.getUserSelectedAddon().size() > 0) {
             chip_group_user_selected_addon.removeAllViews(); //clear all views already added
-            for(AddonModel addonModel : Common.selectedFood.getUserSelectedAddon()) //add all addon to the list
+            for (AddonModel addonModel : Common.selectedFood.getUserSelectedAddon()) //add all addon to the list
             {
                 Chip chip = (Chip) getLayoutInflater().inflate(R.layout.layout_chip_with_delete_icon, null);
                 chip.setText(new StringBuilder(addonModel.getName()).append("(+$")
@@ -597,11 +682,11 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 chip_group_user_selected_addon.addView(chip);
             }
 
-        }
-        else
+        } else
             chip_group_user_selected_addon.removeAllViews();
 
     }
+
     private void initPlacesClient() {
         Places.initialize(getContext(), getString(R.string.google_maps_key));
         placesClient = Places.createClient(getContext());
@@ -619,7 +704,15 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                     @Override
                     public void onSuccess(@io.reactivex.annotations.NonNull Double aDouble) {
-                        txt_total_price.setText(new StringBuilder("Total: $").append(aDouble));
+                        if (Common.discountApply != null) {
+                            aDouble = aDouble - (aDouble * Common.discountApply.getPercent() / 100);
+                            txt_total_price.setText(new StringBuilder("Total: $").append(aDouble)
+                            .append("(-")
+                            .append(Common.discountApply.getPercent())
+                            .append("%)"));
+                        } else {
+                            txt_total_price.setText(new StringBuilder("Total: $").append(aDouble));
+                        }
                     }
 
                     @Override
@@ -809,7 +902,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                                                             orderModel.setCartItemList(cartItems);
                                                             orderModel.setTotalPayment(totalPrice);
-                                                            orderModel.setDiscount(0); //implement discount functionality late todo
+                                                            if (Common.discountApply != null) {
+                                                                orderModel.setDiscount(Common.discountApply.getPercent());
+                                                            } else
+                                                                orderModel.setDiscount(0);
                                                             orderModel.setFinalPayment(finalPrice);
                                                             orderModel.setCod(false);
                                                             orderModel.setTransactionId(brainTreeTransaction.getTransaction().getId());
@@ -829,6 +925,10 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                                 }
                             }
                         });
+            }
+        } else if (requestCode == SCAN_QR_PERMISSION) {
+            if (resultCode == Activity.RESULT_OK) {
+                edt_discount_code.setText(data.getStringExtra(Common.QR_CODE_TAG).toLowerCase());
             }
         }
     }
@@ -967,12 +1067,13 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     private void displayAlreadySelectedAddon(ChipGroup chip_group_user_selected_addon, CartItem cartItem) {
         if (cartItem.getFoodAddon() != null &&
                 !cartItem.getFoodAddon().equals("Default")) {
-            List<AddonModel> addonModels = new Gson().fromJson(cartItem.getFoodAddon(), new TypeToken<List<AddonModel>>(){}.getType());
+            List<AddonModel> addonModels = new Gson().fromJson(cartItem.getFoodAddon(), new TypeToken<List<AddonModel>>() {
+            }.getType());
             Common.selectedFood.setUserSelectedAddon(addonModels);
             chip_group_user_selected_addon.removeAllViews();
 
 
-            for(AddonModel addonModel : addonModels) //add all addon to the list
+            for (AddonModel addonModel : addonModels) //add all addon to the list
             {
                 Chip chip = (Chip) getLayoutInflater().inflate(R.layout.layout_chip_with_delete_icon, null);
                 chip.setText(new StringBuilder(addonModel.getName()).append("(+$")
@@ -996,7 +1097,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
             edt_search.addTextChangedListener(this);
 
-            for (AddonModel addonModel:Common.selectedFood.getAddon()) {
+            for (AddonModel addonModel : Common.selectedFood.getAddon()) {
 
                 Chip chip = (Chip) getLayoutInflater().inflate(R.layout.layout_addon_item, null);
                 chip.setText(new StringBuilder(addonModel.getName()).append("(+$")
@@ -1029,7 +1130,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         chip_group_addon.clearCheck();
         chip_group_addon.removeAllViews();
 
-        for (AddonModel addonModel:Common.selectedFood.getAddon()) {
+        for (AddonModel addonModel : Common.selectedFood.getAddon()) {
             if (addonModel.getName().toLowerCase().contains(charSequence.toString().toLowerCase())) {
                 Chip chip = (Chip) getLayoutInflater().inflate(R.layout.layout_addon_item, null);
                 chip.setText(new StringBuilder(addonModel.getName()).append("(+$")

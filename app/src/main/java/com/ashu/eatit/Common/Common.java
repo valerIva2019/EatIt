@@ -28,6 +28,7 @@ import androidx.core.app.NotificationCompat;
 
 import com.ashu.eatit.Model.AddonModel;
 import com.ashu.eatit.Model.CategoryModel;
+import com.ashu.eatit.Model.DiscountModel;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.Model.RestaurantModel;
 import com.ashu.eatit.Model.ShippingOrderModel;
@@ -69,6 +70,8 @@ public class Common {
     public static final String IMAGE_URL = "IMAGE_URL";
     public static final String CHAT_REF = "Chat";
     public static final String CHAT_DETAIL_REF = "ChatDetail";
+    public static final String QR_CODE_TAG = "QRCode";
+    public static final String DISCOUNT = "Discount";
     private static final String TOKEN_REF = "Tokens";
 
     public static UserModel currentUser;
@@ -79,6 +82,7 @@ public class Common {
     public static String authorizeKey = "";
     public static RestaurantModel restaurantSelected;
     public static ShippingOrderModel currentShippingOrder;
+    public static DiscountModel discountApply;
 
     public static String formatPrice(double displayPrice) {
         if (displayPrice != 0) {

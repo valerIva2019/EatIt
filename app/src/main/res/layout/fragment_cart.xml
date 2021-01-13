@@ -40,6 +40,39 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_weight="8"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <EditText
+                    android:id="@+id/edt_discount_code"
+                    android:hint="Enter or scan your code"
+                    android:layout_width="0dp"
+                    android:layout_weight="6"
+                    android:layout_height="wrap_content"
+                    android:textColorHint="@color/colorPrimary"
+                    />
+                <ImageView
+                    android:id="@+id/img_check"
+                    android:layout_gravity="center_vertical"
+                    android:hint="Enter or scan your code"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/ic_baseline_check_24"
+                    app:tint="@color/colorPrimary" />
+                <ImageView
+                    android:id="@+id/img_scan"
+                    android:layout_gravity="center_vertical"
+                    android:hint="Enter or scan your code"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/ic_menu_camera"
+                    app:tint="@color/colorPrimary" />
+
+            </LinearLayout>
             <TextView
                 android:id="@+id/txt_total_price"
                 android:text="Total: 0,0"

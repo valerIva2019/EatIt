@@ -72,6 +72,9 @@ public class Common {
     public static final String CHAT_DETAIL_REF = "ChatDetail";
     public static final String QR_CODE_TAG = "QRCode";
     public static final String DISCOUNT = "Discount";
+    public static final String LOCATION_REF = "Location";
+    public static final float SHIPPING_COST_PER_KM = 1;
+    public static final double MAX_SHIPPING_COST = 30;
     private static final String TOKEN_REF = "Tokens";
 
     public static UserModel currentUser;

@@ -11,7 +11,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
-import android.media.Image;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.Parcelable;
@@ -65,6 +64,7 @@ import com.ashu.eatit.Model.DiscountModel;
 import com.ashu.eatit.Model.FCMSendData;
 import com.ashu.eatit.Model.FoodModel;
 import com.ashu.eatit.Model.OrderModel;
+import com.ashu.eatit.Model.RestaurantLocationModel;
 import com.ashu.eatit.Model.SizeModel;
 import com.ashu.eatit.R;
 import com.ashu.eatit.Remote.ICloudFunctions;
@@ -81,14 +81,12 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.android.libraries.places.api.Places;
 import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment;
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.firebase.database.DataSnapshot;
@@ -347,6 +345,7 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
         builder.setView(view);
         builder.setNegativeButton("NO", (dialogInterface, i) -> dialogInterface.dismiss())
                 .setPositiveButton("YES", (dialogInterface, i) -> {
+                    dialogInterface.dismiss();
                     if (rdi_cod.isChecked()) {
                         paymentCOD(txt_address.getText().toString(), edt_comment.getText().toString());
 
@@ -374,6 +373,32 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     }
 
     private void paymentCOD(String address, String comment) {
+
+        FirebaseDatabase.getInstance()
+                .getReference(Common.RESTAURANT_REF)
+                .child(Common.restaurantSelected.getUid())
+                .child(Common.LOCATION_REF)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            RestaurantLocationModel location = snapshot.getValue(RestaurantLocationModel.class);
+                            applyShippingCostByLocation(location);
+
+                        } else {
+                            applyShippingCostByLocation(null);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(getContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+        }
+
+    private void applyShippingCostByLocation(RestaurantLocationModel location) {
         compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -400,9 +425,31 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                                     orderModel.setLat(currentLocation.getLatitude());
                                     orderModel.setLng(currentLocation.getLongitude());
 
+                                    if (location != null) {
+                                        Location orderLocation = new Location("");
+                                        orderLocation.setLatitude(currentLocation.getLatitude());
+                                        orderLocation.setLongitude(currentLocation.getLongitude());
+
+                                        Location restaurantLocation = new Location("");
+                                        restaurantLocation.setLatitude(location.getLat());
+                                        restaurantLocation.setLongitude(location.getLng());
+
+                                        float distance = orderLocation.distanceTo(restaurantLocation)/1000; //in km
+                                        if (distance * Common.SHIPPING_COST_PER_KM > Common.MAX_SHIPPING_COST) {
+                                            orderModel.setShippingCost(Common.MAX_SHIPPING_COST);
+                                        } else {
+                                           orderModel.setShippingCost(distance * Common.SHIPPING_COST_PER_KM);
+                                        }
+
+                                    } else {
+                                        orderModel.setShippingCost(0);
+                                    }
+
                                 } else {
                                     orderModel.setLng(-0.1f);
                                     orderModel.setLat(-0.1f);
+
+                                    orderModel.setShippingCost(Common.MAX_SHIPPING_COST);
                                 }
 
                                 orderModel.setCartItemList(cartItems);
@@ -426,27 +473,34 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                                 }
                             }
                         }), throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
+
     }
 
     private void syncLocalTimeWithGlobalTime(OrderModel orderModel) {
-        final DatabaseReference offsetRef = FirebaseDatabase.getInstance().getReference(".info/serverTimeOffset");
-        offsetRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                long offset = snapshot.getValue(Long.class);
-                long estimatedServerTimeMs = System.currentTimeMillis() + offset;
-                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm");
-                Date resultDate = new Date(estimatedServerTimeMs);
-                Log.d("TEST_DATE", "" + sdf.format(resultDate));
+       AlertDialog alertDialog = new AlertDialog.Builder(requireContext()).setTitle("Shipping Cost")
+               .setMessage("We will take " + orderModel.getFinalPayment() + Math.round(orderModel.getShippingCost()) + "for shipping")
+               .setNegativeButton("NO", (dialog, which) -> dialog.dismiss()).setPositiveButton("YES", (dialog, which) -> {
+                   dialog.dismiss();
+                   final DatabaseReference offsetRef = FirebaseDatabase.getInstance().getReference(".info/serverTimeOffset");
+                   offsetRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                       @Override
+                       public void onDataChange(@NonNull DataSnapshot snapshot) {
+                           long offset = snapshot.getValue(Long.class);
+                           long estimatedServerTimeMs = System.currentTimeMillis() + offset;
+                           SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm");
+                           Date resultDate = new Date(estimatedServerTimeMs);
+                           Log.d("TEST_DATE", "" + sdf.format(resultDate));
 
-                listener.onLoadTimeSuccess(orderModel, estimatedServerTimeMs);
-            }
+                           listener.onLoadTimeSuccess(orderModel, estimatedServerTimeMs);
+                       }
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                listener.onLoadTimeFailed(error.getMessage());
-            }
-        });
+                       @Override
+                       public void onCancelled(@NonNull DatabaseError error) {
+                           listener.onLoadTimeFailed(error.getMessage());
+                       }
+                   });
+               }).create();
+       alertDialog.show();
     }
 
     private void writeOrderToFirebase(OrderModel orderModel) {
@@ -873,6 +927,29 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
 
                             @Override
                             public void onSuccess(@io.reactivex.annotations.NonNull Double totalPrice) {
+
+                                FirebaseDatabase.getInstance()
+                                        .getReference(Common.RESTAURANT_REF)
+                                        .child(Common.restaurantSelected.getUid())
+                                        .child(Common.LOCATION_REF)
+                                        .addListenerForSingleValueEvent(new ValueEventListener() {
+                                            @Override
+                                            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                                if (snapshot.exists()) {
+                                                    RestaurantLocationModel location = snapshot.getValue(RestaurantLocationModel.class);
+                                                    applyShippingCostForPaymentByLocation(location, totalPrice, nonce);
+
+                                                } else {
+                                                    applyShippingCostForPaymentByLocation(null, totalPrice, nonce);
+                                                }
+                                            }
+
+                                            @Override
+                                            public void onCancelled(@NonNull DatabaseError error) {
+                                                Toast.makeText(getContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+
                                 compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid()).subscribeOn(Schedulers.io())
                                         .observeOn(AndroidSchedulers.mainThread())
                                         .subscribe(cartItems -> {
@@ -931,6 +1008,76 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
                 edt_discount_code.setText(data.getStringExtra(Common.QR_CODE_TAG).toLowerCase());
             }
         }
+    }
+
+    private void applyShippingCostForPaymentByLocation(RestaurantLocationModel location, Double totalPrice, PaymentMethodNonce nonce) {
+        compositeDisposable.add(cartDataSource.getAllCart(Common.currentUser.getUid(), Common.restaurantSelected.getUid()).subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(cartItems -> {
+                    Map<String, String> headers = new HashMap<>();
+                    headers.put("Authorization", Common.buildToken(Common.authorizeKey));
+                    compositeDisposable.add(cloudFunctions.submitPayment(headers, totalPrice, nonce.getNonce())
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(brainTreeTransaction -> {
+                                if (brainTreeTransaction.isSuccess()) {
+                                    double finalPrice = totalPrice;
+                                    OrderModel orderModel = new OrderModel();
+                                    orderModel.setUserId(Common.currentUser.getUid());
+                                    orderModel.setUserName(Common.currentUser.getName());
+                                    orderModel.setUserPhone(Common.currentUser.getPhone());
+                                    orderModel.setShippingAddress(address);
+                                    orderModel.setComment(comment);
+
+                                    if (currentLocation != null) {
+                                        orderModel.setLat(currentLocation.getLatitude());
+                                        orderModel.setLng(currentLocation.getLongitude());
+
+                                        if (location != null) {
+                                            Location orderLocation = new Location("");
+                                            orderLocation.setLatitude(currentLocation.getLatitude());
+                                            orderLocation.setLongitude(currentLocation.getLongitude());
+
+                                            Location restaurantLocation = new Location("");
+                                            restaurantLocation.setLatitude(location.getLat());
+                                            restaurantLocation.setLongitude(location.getLng());
+
+                                            float distance = orderLocation.distanceTo(restaurantLocation)/1000; //in km
+                                            if (distance * Common.SHIPPING_COST_PER_KM > Common.MAX_SHIPPING_COST) {
+                                                orderModel.setShippingCost(Common.MAX_SHIPPING_COST);
+                                            } else {
+                                                orderModel.setShippingCost(distance * Common.SHIPPING_COST_PER_KM);
+                                            }
+
+                                        } else {
+                                            orderModel.setShippingCost(0);
+                                        }
+
+                                    } else {
+                                        orderModel.setLng(-0.1f);
+                                        orderModel.setLat(-0.1f);
+
+                                        orderModel.setShippingCost(Common.MAX_SHIPPING_COST);
+
+                                    }
+
+                                    orderModel.setCartItemList(cartItems);
+                                    orderModel.setTotalPayment(totalPrice);
+                                    if (Common.discountApply != null) {
+                                        orderModel.setDiscount(Common.discountApply.getPercent());
+                                    } else
+                                        orderModel.setDiscount(0);
+                                    orderModel.setFinalPayment(finalPrice);
+                                    orderModel.setCod(false);
+                                    orderModel.setTransactionId(brainTreeTransaction.getTransaction().getId());
+
+                                    //writeOrderToFirebase(orderModel);
+                                    syncLocalTimeWithGlobalTime(orderModel);
+                                }
+
+                            }, throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
+                }, throwable -> Toast.makeText(getContext(), "" + throwable.getMessage(), Toast.LENGTH_SHORT).show()));
+
     }
 
     @Override

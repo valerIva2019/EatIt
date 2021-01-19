@@ -95,6 +95,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-storage:19.2.1'
 
     implementation 'me.dm7.barcodescanner:zxing:1.9.13'
+    implementation 'net.cachapa.expandablelayout:expandablelayout:2.9.2'
 
 
 }

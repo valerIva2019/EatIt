@@ -33,64 +33,157 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <LinearLayout
-            android:orientation="vertical"
-            android:padding="8dp"
-            android:layout_margin="8dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+           <LinearLayout
+               android:orientation="vertical"
+               android:padding="8dp"
+               android:layout_margin="8dp"
+               android:layout_width="match_parent"
+               android:layout_height="wrap_content">
 
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_weight="8"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-                <EditText
-                    android:id="@+id/edt_discount_code"
-                    android:hint="Enter or scan your code"
-                    android:layout_width="0dp"
-                    android:layout_weight="6"
-                    android:layout_height="wrap_content"
-                    android:textColorHint="@color/colorPrimary"
-                    />
-                <ImageView
-                    android:id="@+id/img_check"
-                    android:layout_gravity="center_vertical"
-                    android:hint="Enter or scan your code"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/ic_baseline_check_24"
-                    app:tint="@color/colorPrimary" />
-                <ImageView
-                    android:id="@+id/img_scan"
-                    android:layout_gravity="center_vertical"
-                    android:hint="Enter or scan your code"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/ic_menu_camera"
-                    app:tint="@color/colorPrimary" />
 
-            </LinearLayout>
-            <TextView
-                android:id="@+id/txt_total_price"
-                android:text="Total: 0,0"
-                android:fontFamily="@font/brandon_medium"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="8dp"
-                android:textSize="24sp"/>
+               <LinearLayout
+                   android:id="@+id/apply_discount"
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"
+                   android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_place_order"
-                android:text="Place Order"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
-        </LinearLayout>
+                   <ImageView
+                       android:layout_width="30dp"
+                       android:layout_height="35dp"
+                       android:src="@drawable/ic_baseline_verified_24" />
+
+                   <TextView
+                       android:layout_width="wrap_content"
+                       android:layout_height="wrap_content"
+                       android:layout_gravity="center"
+                       android:layout_marginLeft="14.5dp"
+                       android:layout_weight="1"
+                       android:fontFamily="@font/brandon_medium"
+                       android:text="APPLY COUPON"
+                       android:textColor="@android:color/black"
+                       android:textSize="14sp" />
+
+                   <ImageView
+                       android:id="@+id/discount_arrow"
+                       android:layout_width="wrap_content"
+                       android:layout_height="wrap_content"
+                       android:layout_gravity="center"
+                       android:src="@drawable/ic_baseline_arrow_drop_down_24" />
+               </LinearLayout>
+               <net.cachapa.expandablelayout.ExpandableLayout
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"
+                   android:id="@+id/expandable_layout"
+                   app:el_parallax="0.5"
+                   app:el_duration="1000"
+                   app:el_expanded="false">
+
+                   <LinearLayout
+                       android:orientation="horizontal"
+                       android:layout_weight="8"
+                       android:layout_width="match_parent"
+                       android:layout_height="wrap_content">
+                       <EditText
+                           android:id="@+id/edt_discount_code"
+                           android:hint="ENTER OR SCAN YOUR CODE"
+                           android:layout_width="0dp"
+                           android:layout_weight="6"
+                           android:textSize="16sp"
+                           android:layout_height="wrap_content"
+                           android:textColorHint="@color/colorPrimary"
+                           />
+                       <ImageView
+                           android:id="@+id/img_check"
+                           android:layout_gravity="center_vertical"
+                           android:hint="Enter or scan your code"
+                           android:layout_width="0dp"
+                           android:layout_weight="1"
+                           android:layout_height="wrap_content"
+                           android:src="@drawable/ic_baseline_check_24"
+                           app:tint="@color/colorPrimary" />
+                       <ImageView
+                           android:id="@+id/img_scan"
+                           android:layout_gravity="center_vertical"
+                           android:hint="Enter or scan your code"
+                           android:layout_width="0dp"
+                           android:layout_weight="1"
+                           android:layout_height="wrap_content"
+                           android:src="@drawable/ic_menu_camera"
+                           app:tint="@color/colorPrimary" />
+
+                   </LinearLayout>
+
+               </net.cachapa.expandablelayout.ExpandableLayout>
+<!--               <LinearLayout-->
+<!--                   android:orientation="horizontal"-->
+<!--                   android:layout_weight="8"-->
+<!--                   android:layout_width="match_parent"-->
+<!--                   android:layout_height="wrap_content">-->
+<!--                   <EditText-->
+<!--                       android:id="@+id/edt_discount_code"-->
+<!--                       android:hint="Enter or scan your code"-->
+<!--                       android:layout_width="0dp"-->
+<!--                       android:layout_weight="6"-->
+<!--                       android:layout_height="wrap_content"-->
+<!--                       android:textColorHint="@color/colorPrimary"-->
+<!--                       />-->
+<!--                   <ImageView-->
+<!--                       android:id="@+id/img_check"-->
+<!--                       android:layout_gravity="center_vertical"-->
+<!--                       android:hint="Enter or scan your code"-->
+<!--                       android:layout_width="0dp"-->
+<!--                       android:layout_weight="1"-->
+<!--                       android:layout_height="wrap_content"-->
+<!--                       android:src="@drawable/ic_baseline_check_24"-->
+<!--                       app:tint="@color/colorPrimary" />-->
+<!--                   <ImageView-->
+<!--                       android:id="@+id/img_scan"-->
+<!--                       android:layout_gravity="center_vertical"-->
+<!--                       android:hint="Enter or scan your code"-->
+<!--                       android:layout_width="0dp"-->
+<!--                       android:layout_weight="1"-->
+<!--                       android:layout_height="wrap_content"-->
+<!--                       android:src="@drawable/ic_menu_camera"-->
+<!--                       app:tint="@color/colorPrimary" />-->
+
+<!--               </LinearLayout>-->
+               <LinearLayout
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"
+                   android:background="@drawable/dotted_line_rect"
+                   android:orientation="horizontal"
+                   android:layout_marginTop="8dp"
+                   android:layout_marginBottom="8dp"
+                   android:padding="10dp">
+
+
+                   <TextView
+                       android:layout_width="0dp"
+                       android:layout_height="wrap_content"
+                       android:layout_weight="1"
+                       android:fontFamily="@font/brandon_medium"
+                       android:text="Total Amount : "
+                       android:textColor="@android:color/black"
+                       android:textSize="16sp" />
+
+                   <TextView
+                       android:id="@+id/txt_total_price"
+                       android:layout_width="wrap_content"
+                       android:layout_height="wrap_content"
+                       android:layout_marginEnd="10dp"
+                       android:fontFamily="@font/brandon_medium"
+                       android:text="6000"
+                       android:textColor="@android:color/black"
+                       android:textSize="12.5sp" />
+               </LinearLayout>
+
+               <com.google.android.material.button.MaterialButton
+                   android:id="@+id/btn_place_order"
+                   android:text="Place Order"
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"/>
+           </LinearLayout>
+
     </androidx.cardview.widget.CardView>
 
 </RelativeLayout>

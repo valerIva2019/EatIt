@@ -156,10 +156,11 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
         View headerView = navigationView.getHeaderView(0);
         TextView txt_user = headerView.findViewById(R.id.txt_user);
-        Common.setSpanString("Hey, ", Common.currentUser.getName(), txt_user);
-
-        //Hide Fab beacuse restaurant list is shown
-        //countCartItem();
+        TextView txt_phone = headerView.findViewById(R.id.txt_phone);
+        TextView txt_email = headerView.findViewById(R.id.txt_email);
+        txt_user.setText(Common.currentUser.getName());
+        txt_email.setText(Common.currentUser.getEmail());
+        txt_phone.setText(Common.currentUser.getPhone());
 
         EventBus.getDefault().postSticky(new HideFABCart(true));
 
@@ -357,7 +358,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                     Common.currentUser = null;
                     FirebaseAuth.getInstance().signOut();
 
-                    Intent intent = new Intent(HomeActivity.this, MainActivity.class);
+                    Intent intent = new Intent(HomeActivity.this, LoginActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     finish();

@@ -39,6 +39,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -75,6 +76,7 @@ import com.ashu.eatit.ScanQRActivity;
 import com.braintreepayments.api.dropin.DropInRequest;
 import com.braintreepayments.api.dropin.DropInResult;
 import com.braintreepayments.api.models.PaymentMethodNonce;
+import com.bumptech.glide.Glide;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -96,6 +98,8 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
+import net.cachapa.expandablelayout.ExpandableLayout;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -178,12 +182,35 @@ public class CartFragment extends Fragment implements ILoadTimeFromFirebaseListe
     EditText edt_discount_code;
 
     @SuppressLint("NonConstantResourceId")
+    @BindView(R.id.apply_discount)
+    LinearLayout apply_discount;
+
+    @SuppressLint("NonConstantResourceId")
+    @BindView(R.id.discount_arrow)
+    ImageView discount_arrow;
+
+    @SuppressLint("NonConstantResourceId")
+    @BindView(R.id.expandable_layout)
+    ExpandableLayout expandable_layout;
+
+    @SuppressLint("NonConstantResourceId")
     @OnClick(R.id.img_scan)
     void onScanQRCode() {
         startActivityForResult(new Intent(requireContext(), ScanQRActivity.class), SCAN_QR_PERMISSION);
     }
 
-    ;
+    @SuppressLint("NonConstantResourceId")
+    @OnClick(R.id.apply_discount)
+    void onShowClick() {
+        if (expandable_layout.isExpanded()) {
+            discount_arrow.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.ic_baseline_arrow_drop_up_24));
+        } else {
+            discount_arrow.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.ic_baseline_arrow_drop_down_24));
+        }
+        expandable_layout.toggle();
+    }
+
+
 
     @SuppressLint("NonConstantResourceId")
     @OnClick(R.id.img_check)

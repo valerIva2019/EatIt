@@ -1,16 +1,17 @@
 package com.ashu.eatit.Model;
 
 public class UserModel {
-    private String uid, name, phone, address;
+    private String uid, name, phone, address, email;
     private double lat, lng;
 
     public UserModel() {
     }
 
-    public UserModel(String uid, String name, String phone, String address) {
+    public UserModel(String uid, String name, String phone, String email, String address) {
         this.uid = uid;
         this.name = name;
         this.phone = phone;
+        this.email = email;
         this.address = address;
     }
 
@@ -36,6 +37,14 @@ public class UserModel {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getAddress() {
